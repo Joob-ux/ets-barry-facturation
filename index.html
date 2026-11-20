@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facturation Ets Barry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#eef1ef; --surface:#ffffff; --ink:#17201c; --muted:#5d6b64; --line:#d3dbd6;
+  --accent:#0f6b4f; --accent-ink:#ffffff; --warn:#a4560b; --danger:#b3261e; --soft:#e2ece7;
+  --display:"Archivo",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#111715; --surface:#1a2320; --ink:#e7eeea; --muted:#9aaaa2; --line:#2e3a35;
+  --accent:#3fb489; --accent-ink:#0b1310; --warn:#e3a35a; --danger:#f2867d; --soft:#22302b; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 48px;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px}
+h1{font-family:var(--display);font-weight:800;font-size:1.6rem;margin:0;letter-spacing:-.01em}
+nav{display:flex;gap:6px}
+nav button{background:transparent;color:var(--muted);border-color:var(--line)}
+nav button[aria-current="page"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:20px}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;min-width:0}
+h2{font-family:var(--display);font-size:1rem;font-weight:700;margin:0 0 14px}
+form{display:grid;gap:12px}
+label{display:grid;gap:4px;font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+input{font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 11px;width:100%;min-width:0}
+input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.lines{display:grid;gap:10px}
+.line{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.3fr) auto;gap:8px;align-items:end}
+@media (max-width:480px){.line{grid-template-columns:1fr 1fr}.line label:first-child{grid-column:1/-1}}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+button{font:inherit;font-weight:600;border-radius:6px;padding:10px 16px;cursor:pointer;border:1px solid var(--accent)}
+.primary{background:var(--accent);color:var(--accent-ink)}
+.ghost{background:transparent;color:var(--accent)}
+.small{padding:5px 10px;font-size:.82rem}
+.del{padding:9px 11px;background:transparent;color:var(--muted);border-color:var(--line)}
+.danger{background:transparent;color:var(--danger);border-color:var(--line)}
+button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.msg{font-size:.9rem;color:var(--accent);min-height:1.4em}
+.err{color:var(--danger)}
+.invoice{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:28px;display:grid;gap:18px;min-width:0}
+.inv-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;border-bottom:3px solid var(--accent);padding-bottom:14px}
+.brand{font-family:var(--display);font-weight:800;font-size:1.2rem;color:var(--accent)}
+.brand small{display:block;font-family:var(--body);font-weight:400;font-size:.8rem;color:var(--muted)}
+.meta{text-align:right;font-size:.85rem}
+.meta b{font-family:var(--mono);font-size:1rem}
+.client{font-size:.9rem}
+.k{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--line);padding:6px 4px}
+td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
+.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);white-space:nowrap}
+.totals{display:grid;gap:6px;justify-self:end;width:min(100%,280px)}
+.totals div{display:flex;justify-content:space-between;gap:20px}
+.totals .grand{font-weight:700;border-top:2px solid var(--ink);padding-top:6px;font-size:1.05rem}
+.totals .due{color:var(--warn);font-weight:600}
+.foot{font-size:.78rem;color:var(--muted);text-align:center}
+.pill{display:inline-block;font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--soft);color:var(--accent);white-space:nowrap}
+.pill.part{color:var(--warn)}
+.empty{color:var(--muted);font-size:.9rem;padding:16px 0}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.tools input{max-width:320px}
+.stats{display:flex;flex-wrap:wrap;gap:24px;font-size:.85rem;color:var(--muted);margin-bottom:12px}
+.stats b{display:block;color:var(--ink);font-family:var(--mono);font-size:1rem}
+.acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Facturation Ets Barry</h1>
+    <nav>
+      <button type="button" id="tabNew" aria-current="page">Nouvelle facture</button>
+      <button type="button" id="tabHist">Historique</button>
+    </nav>
+  </header>
+
+  <div class="grid" id="viewNew">
+    <section class="panel">
+      <h2 id="formTitle">Nouvelle facture</h2>
+      <form id="f" novalidate>
+        <label>Nom du client<input id="nom" autocomplete="off"></label>
+        <label>Adresse (origine)<input id="adresse" autocomplete="off"></label>
+        <div id="lines" class="lines"></div>
+        <button class="ghost" type="button" id="addLine">+ Ajouter un produit</button>
+        <label>Virement reçu (FCFA)<input id="virement" type="number" min="0" step="1" inputmode="numeric"></label>
+        <div class="btns">
+          <button class="primary" type="submit" id="saveBtn">Enregistrer et télécharger le PDF</button>
+          <button class="ghost" type="button" id="reset">Nouvelle facture vide</button>
+        </div>
+        <div class="msg" id="msg" role="status"></div>
+      </form>
+    </section>
+
+    <section class="invoice" aria-label="Aperçu de la facture">
+      <div class="inv-head">
+        <div class="brand"><span id="coName"></span><small id="coInfo"></small></div>
+        <div class="meta">Facture <b id="pNo"></b><br><span id="pDate"></span></div>
+      </div>
+      <div class="client">
+        <div class="k">Facturé à</div>
+        <div><strong id="pNom"></strong></div>
+        <div id="pAdr"></div>
+      </div>
+      <div class="tbl"><table>
+        <thead><tr><th>Désignation</th><th class="num">Quantité</th><th class="num">Valeur</th><th class="num">Montant</th></tr></thead>
+        <tbody id="pLines"></tbody>
+      </table></div>
+      <div class="totals">
+        <div class="grand"><span>Total</span><span class="num" id="pT"></span></div>
+        <div><span>Virement reçu</span><span class="num" id="pVir"></span></div>
+        <div class="due"><span>Reste à payer</span><span class="num" id="pR"></span></div>
+      </div>
+      <div class="foot">Merci de votre confiance.</div>
+    </section>
+  </div>
+
+  <section class="panel" id="viewHist" hidden>
+    <h2>Historique des factures</h2>
+    <div class="stats" id="stats"></div>
+    <div class="tools">
+      <input id="search" placeholder="Chercher un client, une origine ou un numéro" aria-label="Chercher">
+      <button class="ghost small" type="button" id="exportBtn">Sauvegarder l'historique (fichier)</button>
+      <label class="ghost small" style="display:inline-block;border:1px solid var(--accent);border-radius:6px;padding:5px 10px;color:var(--accent);cursor:pointer;text-transform:none;letter-spacing:0;font-size:.82rem">Restaurer<input type="file" id="importFile" accept="application/json" hidden></label>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Origine</th><th class="num">Total</th><th>État</th><th></th></tr></thead>
+      <tbody id="hist"></tbody>
+    </table></div>
+    <div class="empty" id="histEmpty" hidden>Aucune facture pour l'instant. Créez la première dans « Nouvelle facture ».</div>
+  </section>
+</div>
+
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="lib/jspdf.plugin.autotable.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
