@@ -16,6 +16,8 @@ const numero = no => String(no).padStart(4, '0');
 const totalDe = lignes => lignes.reduce((s, l) => s + l.q * l.v, 0);
 
 let factures = [];
+let logoData = null; // logo en data URL pour le PDF
+fetch('logo.jpg').then(r => r.ok ? r.blob() : null).then(b => { if (!b) return; const fr = new FileReader(); fr.onload = () => logoData = fr.result; fr.readAsDataURL(b); }).catch(() => {});
 let enEdition = null; // numéro de la facture en cours de modification
 
 function charger() {
@@ -90,11 +92,13 @@ function telechargerPDF(f) {
   const vert = [15, 107, 79], gris = [93, 107, 100];
   const W = 210, M = 18;
 
+  let X = M;
+  if (logoData) { try { doc.addImage(logoData, 'JPEG', M, 15, 20, 20); X = M + 25; } catch (e) {} }
   doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(...vert);
-  doc.text(ENTREPRISE.nom, M, 22);
+  doc.text(ENTREPRISE.nom, X, 22);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...gris);
-  doc.text(ENTREPRISE.adresse, M, 28);
-  doc.text('NINEA : ' + ENTREPRISE.ninea + '   ·   RC : ' + ENTREPRISE.rc, M, 33);
+  doc.text(ENTREPRISE.adresse, X, 28);
+  doc.text('NINEA : ' + ENTREPRISE.ninea + '   ·   RC : ' + ENTREPRISE.rc, X, 33);
 
   doc.setTextColor(23, 32, 28); doc.setFontSize(18); doc.setFont('helvetica', 'bold');
   doc.text('FACTURE', W - M, 22, { align: 'right' });

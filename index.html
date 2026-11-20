@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="logo.jpg">
 <title>Facturation Ets Barry</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -47,6 +48,10 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .err{color:var(--danger)}
 .invoice{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:28px;display:grid;gap:18px;min-width:0}
 .inv-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;border-bottom:3px solid var(--accent);padding-bottom:14px}
+.title{display:flex;align-items:center;gap:10px}
+.logo{width:40px;height:40px;border-radius:8px;object-fit:cover;flex:none}
+.logo.big{width:56px;height:56px}
+.brand-row{display:flex;align-items:center;gap:12px;min-width:0}
 .brand{font-family:var(--display);font-weight:800;font-size:1.2rem;color:var(--accent)}
 .brand small{display:block;font-family:var(--body);font-weight:400;font-size:.8rem;color:var(--muted)}
 .meta{text-align:right;font-size:.85rem}
@@ -77,7 +82,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
 <body>
 <div class="wrap">
   <header>
-    <h1>Facturation Ets Barry</h1>
+    <h1 class="title"><img src="logo.jpg" alt="" class="logo">Facturation Ets Barry</h1>
     <nav>
       <button type="button" id="tabNew" aria-current="page">Nouvelle facture</button>
       <button type="button" id="tabHist">Historique</button>
@@ -103,7 +108,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
 
     <section class="invoice" aria-label="Aperçu de la facture">
       <div class="inv-head">
-        <div class="brand"><span id="coName"></span><small id="coInfo"></small></div>
+        <div class="brand-row"><img src="logo.jpg" alt="Logo Ets Barry" class="logo big"><div class="brand"><span id="coName"></span><small id="coInfo"></small></div></div>
         <div class="meta">Facture <b id="pNo"></b><br><span id="pDate"></span></div>
       </div>
       <div class="client">
