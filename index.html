@@ -152,6 +152,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
         <datalist id="codesList"></datalist>
         <label>Nom du client<input id="nom" autocomplete="off"></label>
         <label>Adresse (origine)<input id="adresse" autocomplete="off"></label>
+        <label>Téléphone du client<input id="telephone" type="tel" inputmode="tel" autocomplete="off" placeholder="Ex. 77 123 45 67"></label>
         <div id="lines" class="lines"></div>
         <button class="ghost" type="button" id="addLine">+ Ajouter un produit</button>
         <div class="row2">
@@ -176,6 +177,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
         <div class="k">Facturé à <span id="pCode"></span></div>
         <div><strong id="pNom"></strong></div>
         <div id="pAdr"></div>
+        <div id="pTel"></div>
       </div>
       <div class="tbl"><table>
         <thead><tr><th>Désignation</th><th class="num">Quantité</th><th class="num">Prix unitaire</th><th class="num">Montant</th></tr></thead>
@@ -193,7 +195,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
   <section class="panel" id="viewClients" hidden>
     <h2>Comptes clients</h2>
     <div class="tools">
-      <input id="codeSearch" placeholder="Taper le code client (ex. C001) ou un nom" aria-label="Code client">
+      <input id="codeSearch" placeholder="Taper le code client, un nom ou un téléphone" aria-label="Code client">
       <button class="primary small admin-only" type="button" id="addClientBtn">+ Ajouter un client</button>
     </div>
     <form id="clientForm" class="card admin-only" hidden novalidate>
@@ -202,7 +204,10 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
         <label>Code client<input id="cCode" autocomplete="off" autocapitalize="characters" placeholder="Ex. BARRY-01"></label>
         <label>Nom du client<input id="cNom" autocomplete="off"></label>
       </div>
-      <label>Adresse (origine)<input id="cAdresse" autocomplete="off"></label>
+      <div class="row2">
+        <label>Adresse (origine)<input id="cAdresse" autocomplete="off"></label>
+        <label>Téléphone<input id="cTelephone" type="tel" inputmode="tel" autocomplete="off" placeholder="Ex. 77 123 45 67"></label>
+      </div>
       <div class="hint" id="cCodeHint"></div>
       <div class="row-actions">
         <button class="primary small" type="submit" id="cSave">Créer le client</button>
@@ -212,7 +217,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
     </form>
     <div id="clientDetail" hidden></div>
     <div class="tbl"><table>
-      <thead><tr><th>Code</th><th>Client</th><th>Origine</th><th class="num">Factures</th><th class="num">Total</th><th class="num">Reste à payer</th><th></th></tr></thead>
+      <thead><tr><th>Code</th><th>Client</th><th>Origine</th><th>Téléphone</th><th class="num">Factures</th><th class="num">Total</th><th class="num">Reste à payer</th><th></th></tr></thead>
       <tbody id="clientsBody"></tbody>
     </table></div>
     <div class="empty" id="clientsEmpty" hidden>Aucun client pour l'instant. Un compte est créé automatiquement à la première facture d'un client.</div>

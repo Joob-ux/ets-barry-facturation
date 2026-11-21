@@ -83,3 +83,8 @@ alter table public.etsbarry_factures alter column nom set default '';
 alter table public.etsbarry_clients drop constraint if exists etsbarry_clients_nom_check;
 alter table public.etsbarry_clients alter column nom set default '';
 alter table public.etsbarry_clients add constraint etsbarry_clients_nom_check check (length(nom) <= 200);
+
+-- 2026-11-21 : téléphone du client (facultatif)
+alter table etsbarry_clients add column if not exists telephone text not null default '';
+alter table etsbarry_factures add column if not exists telephone text not null default '';
+-- La fonction etsbarry_compte renvoie aussi le téléphone (client et factures).

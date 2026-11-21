@@ -26,7 +26,7 @@ const numero = no => String(no).padStart(4, '0');
 const totalDe = lignes => lignes.reduce((s, l) => s + l.q * l.v, 0);
 
 let factures = [];
-let clients = []; // { code: 'C001', nom, adresse }
+let clients = []; // { code: 'C001', nom, adresse, telephone }
 let logoData = null; // logo en data URL pour le PDF
 fetch('logo.jpg').then(r => r.ok ? r.blob() : null).then(b => { if (!b) return; const fr = new FileReader(); fr.onload = () => logoData = fr.result; fr.readAsDataURL(b); }).catch(() => {});
 let enEdition = null; // numéro de la facture en cours de modification
@@ -42,18 +42,18 @@ const enNombres = f => ({ ...f, no: Number(f.no), vir: Number(f.vir) || 0, ligne
 
 async function charger() {
   const [c, f] = await Promise.all([
-    sb.from(T_CLIENTS).select('code,nom,adresse').order('code'),
-    sb.from(T_FACTURES).select('no,code,date,nom,adresse,lignes,vir,banque,compte').order('no')
+    sb.from(T_CLIENTS).select('code,nom,adresse,telephone').order('code'),
+    sb.from(T_FACTURES).select('no,code,date,nom,adresse,telephone,lignes,vir,banque,compte').order('no')
   ]);
   if (c.error || f.error) throw (c.error || f.error);
   clients = c.data; factures = f.data.map(enNombres);
 }
 async function enregistrerClient(c) {
-  const { error } = await sb.from(T_CLIENTS).upsert({ code: c.code, nom: c.nom, adresse: c.adresse });
+  const { error } = await sb.from(T_CLIENTS).upsert({ code: c.code, nom: c.nom, adresse: c.adresse, telephone: c.telephone || '' });
   if (error) throw error;
 }
 async function enregistrerFacture(f) {
-  const ligne = { code: f.code, date: f.date, nom: f.nom, adresse: f.adresse, lignes: f.lignes, vir: f.vir, banque: f.banque || '', compte: f.compte || '' };
+  const ligne = { code: f.code, date: f.date, nom: f.nom, adresse: f.adresse, telephone: f.telephone || '', lignes: f.lignes, vir: f.vir, banque: f.banque || '', compte: f.compte || '' };
   if (f.no) ligne.no = f.no;
   const { data, error } = await sb.from(T_FACTURES).upsert(ligne).select('no').single();
   if (error) throw error;
@@ -64,8 +64,8 @@ async function supprimerFacture(no) {
   if (error) throw error;
 }
 // Un nouveau client, avec le code choisi par le gérant.
-async function creerClient(code, nom, adresse) {
-  const c = { code, nom: nom.trim(), adresse: (adresse || '').trim() };
+async function creerClient(code, nom, adresse, telephone) {
+  const c = { code, nom: nom.trim(), adresse: (adresse || '').trim(), telephone: (telephone || '').trim() };
   const { error } = await sb.from(T_CLIENTS).insert(c);
   if (error) throw error.code === '23505' ? new Error('Le code ' + code + ' est déjà utilisé par un autre client.') : error;
   clients.push(c); return c;
@@ -95,7 +95,7 @@ function verifierCode() {
   h.className = 'hint';
   if (!v) { h.textContent = "Facultatif. Tapez le code d'un client existant, ou un nouveau code pour créer le client."; return; }
   const c = trouverClient(v);
-  if (c) { h.textContent = 'Client trouvé : ' + c.nom; h.classList.add('ok'); $('nom').value = c.nom; $('adresse').value = c.adresse; }
+  if (c) { h.textContent = 'Client trouvé : ' + c.nom; h.classList.add('ok'); $('nom').value = c.nom; $('adresse').value = c.adresse; $('telephone').value = c.telephone || ''; }
   else { h.textContent = 'Nouveau client : il sera créé avec le code ' + normaliserCode(v) + '.'; }
   apercu();
 }
@@ -134,6 +134,7 @@ function apercu() {
   const cc = trouverClient($('code').value);
   $('pCode').textContent = cc ? '· Code client ' + cc.code : '';
   $('pAdr').textContent = $('adresse').value || '—';
+  $('pTel').textContent = $('telephone').value ? 'Tél. ' + $('telephone').value : '';
   const tb = $('pLines'); tb.innerHTML = '';
   (ls.length ? ls : [{ d: PRODUIT, q: 0, v: 0 }]).forEach(l => {
     const tr = document.createElement('tr');
@@ -152,7 +153,7 @@ function viderFormulaire() {
   enEdition = null;
   $('formTitle').textContent = 'Nouvelle facture';
   $('saveBtn').textContent = 'Enregistrer et télécharger le PDF';
-  ['code', 'nom', 'adresse', 'virement', 'banque', 'compte'].forEach(id => $(id).value = '');
+  ['code', 'nom', 'adresse', 'telephone', 'virement', 'banque', 'compte'].forEach(id => $(id).value = '');
   verifierCode();
   $('lines').innerHTML = ''; ajouterLigne();
   apercu();
@@ -221,7 +222,8 @@ function telechargerPDF(f) {
   // Bloc client, encadré
   const encre = [23, 32, 28];
   const adr = doc.splitTextToSize('Adresse (origine) : ' + (f.adresse || '—'), 82);
-  const hClient = 16 + adr.length * 5;
+  const tel = f.telephone ? 'Téléphone : ' + f.telephone : '';
+  const hClient = 16 + adr.length * 5 + (tel ? 5 : 0);
   doc.setDrawColor(211, 219, 214); doc.setLineWidth(0.3);
   doc.roundedRect(M, 46, 92, hClient, 1.5, 1.5);
   doc.setFontSize(8); doc.setTextColor(...gris); doc.text('FACTURÉ À' + (f.code ? '   ·   CODE CLIENT : ' + f.code : ''), M + 5, 52);
@@ -229,6 +231,7 @@ function telechargerPDF(f) {
   doc.text(doc.splitTextToSize(f.nom || '—', 82)[0], M + 5, 58);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
   doc.text(adr, M + 5, 64);
+  if (tel) doc.text(tel, M + 5, 64 + adr.length * 5);
 
   // Tableau des produits
   const total = totalDe(f.lignes), reste = Math.max(0, total - f.vir);
@@ -322,13 +325,13 @@ function afficherHistorique() {
 function afficherClients() {
   const q = normal($('codeSearch').value);
   const exact = q && trouverClient(q);
-  const liste = exact ? [exact] : clients.filter(c => !q || normal(c.code).includes(q) || normal(c.nom).includes(q));
+  const liste = exact ? [exact] : clients.filter(c => !q || normal(c.code).includes(q) || normal(c.nom).includes(q) || normal(c.telephone || '').includes(q));
   const tb = $('clientsBody'); tb.innerHTML = '';
   liste.sort((a, b) => a.code.localeCompare(b.code)).forEach(c => {
     const fs = facturesDe(c.code), tot = fs.reduce((s, f) => s + totalDe(f.lignes), 0);
     const reste = fs.reduce((s, f) => s + Math.max(0, totalDe(f.lignes) - f.vir), 0);
     const tr = document.createElement('tr');
-    [[c.code, 'code'], [c.nom, ''], [c.adresse, ''], [nombre(fs.length), 'num'], [fcfa(tot), 'num'], [fcfa(reste), 'num']].forEach(([t, cl]) => {
+    [[c.code, 'code'], [c.nom, ''], [c.adresse, ''], [c.telephone || '', ''], [nombre(fs.length), 'num'], [fcfa(tot), 'num'], [fcfa(reste), 'num']].forEach(([t, cl]) => {
       const td = document.createElement('td'); td.textContent = t; if (cl) td.className = cl; tr.appendChild(td);
     });
     const td = document.createElement('td'); const bx = document.createElement('div'); bx.className = 'acts';
@@ -354,7 +357,7 @@ function carteCompte(c, fs, admin) {
   const card = document.createElement('div'); card.className = 'card';
   const h = document.createElement('h3'); h.textContent = c.code + ' · ' + c.nom; card.appendChild(h);
   const sub = document.createElement('div'); sub.className = 'stats';
-  [['Origine', c.adresse || '—'], ['Factures', nombre(fs.length)], ['Total facturé', fcfa(tot)], ['Reçu', fcfa(recu)], ['Reste à payer', fcfa(tot - recu)]]
+  [['Origine', c.adresse || '—'], ['Téléphone', c.telephone || '—'], ['Factures', nombre(fs.length)], ['Total facturé', fcfa(tot)], ['Reçu', fcfa(recu)], ['Reste à payer', fcfa(tot - recu)]]
     .forEach(([k, v]) => { const d = document.createElement('div'); d.textContent = k; const bb = document.createElement('b'); bb.textContent = v; d.appendChild(bb); sub.appendChild(d); });
   card.appendChild(sub);
   const wrap = document.createElement('div'); wrap.className = 'tbl';
@@ -396,7 +399,7 @@ function ouvrirFormClient(c) {
   $('clientForm').hidden = false;
   $('clientFormTitle').textContent = c ? 'Modifier le client ' + c.code : 'Nouveau client';
   $('cSave').textContent = c ? 'Enregistrer' : 'Créer le client';
-  $('cNom').value = c ? c.nom : ''; $('cAdresse').value = c ? c.adresse : '';
+  $('cNom').value = c ? c.nom : ''; $('cAdresse').value = c ? c.adresse : ''; $('cTelephone').value = c ? (c.telephone || '') : '';
   $('cCode').value = c ? c.code : ''; $('cCode').readOnly = !!c;
   $('cCodeHint').textContent = c ? 'Le code client ne peut pas être changé.' : 'Code facultatif : lettres, chiffres et tirets (ex. BARRY-01).';
   $('cMsg').textContent = '';
@@ -406,7 +409,7 @@ $('addClientBtn').addEventListener('click', () => ouvrirFormClient(null));
 $('cCancel').addEventListener('click', () => { $('clientForm').hidden = true; });
 $('clientForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const nom = $('cNom').value.trim(), adresse = $('cAdresse').value.trim();
+  const nom = $('cNom').value.trim(), adresse = $('cAdresse').value.trim(), telephone = $('cTelephone').value.trim();
   const m = $('cMsg'); m.classList.add('err');
   const code = normaliserCode($('cCode').value);
   // Tout est facultatif. Seul un code déjà pris est refusé : deux clients ne peuvent pas partager un code.
@@ -414,8 +417,8 @@ $('clientForm').addEventListener('submit', async e => {
   let c = clientEnEdition;
   $('cSave').disabled = true;
   try {
-    if (c) { c.nom = nom; c.adresse = adresse; await enregistrerClient(c); }
-    else c = await creerClient(code || codeLibre(), nom, adresse);
+    if (c) { c.nom = nom; c.adresse = adresse; c.telephone = telephone; await enregistrerClient(c); }
+    else c = await creerClient(code || codeLibre(), nom, adresse, telephone);
   } catch (err) { m.textContent = err.message && err.message.startsWith('Le code') ? err.message : erreurReseau(err); return; }
   finally { $('cSave').disabled = false; }
   remplirCodes();
@@ -429,7 +432,7 @@ function modifier(no) {
   $('formTitle').textContent = 'Modifier la facture N° ' + numero(no);
   $('saveBtn').textContent = 'Enregistrer les changements et télécharger le PDF';
   $('code').value = f.code || ''; verifierCode();
-  $('nom').value = f.nom; $('adresse').value = f.adresse; $('virement').value = f.vir || ''; $('banque').value = f.banque || ''; $('compte').value = f.compte || '';
+  $('nom').value = f.nom; $('adresse').value = f.adresse; $('telephone').value = f.telephone || ''; $('virement').value = f.vir || ''; $('banque').value = f.banque || ''; $('compte').value = f.compte || '';
   $('lines').innerHTML = ''; f.lignes.forEach(l => ajouterLigne(l.q, l.v));
   if (!f.lignes.length) ajouterLigne();
   montrer('new'); apercu(); message('');
@@ -452,15 +455,15 @@ $('f').addEventListener('submit', async e => {
   const lignes = lireLignes();
   // Aucun champ obligatoire. On refuse seulement des montants impossibles (ils fausseraient les calculs).
   if (lignes.some(l => l.v > 1e10 || l.q > 1e7) || totalDe(lignes) > 1e13) return message('Un montant est trop grand. Vérifiez les quantités et les prix unitaires.', true);
-  const nom = $('nom').value.trim(), adresse = $('adresse').value.trim();
+  const nom = $('nom').value.trim(), adresse = $('adresse').value.trim(), telephone = $('telephone').value.trim();
   const code = normaliserCode($('code').value);
   let client = code ? trouverClient(code) : null;
   $('saveBtn').disabled = true; message('Enregistrement en ligne…');
   let f;
   try {
-    if (!client && code) client = await creerClient(code, nom, adresse);
-    else if (client && (client.nom !== nom || client.adresse !== adresse)) { client.nom = nom; client.adresse = adresse; await enregistrerClient(client); }
-    const data = { code: client ? client.code : null, nom, adresse, lignes, vir: +$('virement').value || 0, banque: $('banque').value, compte: $('banque').value ? $('compte').value.trim() : '' };
+    if (!client && code) client = await creerClient(code, nom, adresse, telephone);
+    else if (client && (client.nom !== nom || client.adresse !== adresse || (client.telephone || '') !== telephone)) { client.nom = nom; client.adresse = adresse; client.telephone = telephone; await enregistrerClient(client); }
+    const data = { code: client ? client.code : null, nom, adresse, telephone, lignes, vir: +$('virement').value || 0, banque: $('banque').value, compte: $('banque').value ? $('compte').value.trim() : '' };
     if (enEdition) f = { ...factures.find(x => x.no === enEdition), ...data };
     else f = { date: aujourdhui(), ...data };
     await enregistrerFacture(f);
@@ -473,7 +476,7 @@ $('f').addEventListener('submit', async e => {
   remplirCodes();
   message('Facture N° ' + numero(f.no) + ' enregistrée' + (f.code ? ' pour le client ' + f.code : '') + '.');
 });
-['nom', 'adresse', 'virement', 'banque'].forEach(id => $(id).addEventListener('input', apercu));
+['nom', 'adresse', 'telephone', 'virement', 'banque'].forEach(id => $(id).addEventListener('input', apercu));
 $('code').addEventListener('input', verifierCode);
 $('tabClients').addEventListener('click', () => montrer('clients'));
 $('codeSearch').addEventListener('input', afficherClients);
@@ -504,12 +507,12 @@ async function importer(liste, anciensClients) {
   for (const f of liste.slice().sort((a, b) => a.no - b.no)) {
     if (!f || !Array.isArray(f.lignes)) continue;
     const ancien = anciensClients.find(c => c.code === f.code);
-    const nom = (ancien ? ancien.nom : f.nom) || 'Client', adresse = (ancien ? ancien.adresse : f.adresse) || '';
+    const nom = (ancien ? ancien.nom : f.nom) || 'Client', adresse = (ancien ? ancien.adresse : f.adresse) || '', telephone = (ancien ? ancien.telephone : f.telephone) || '';
     const cle = normal(nom);
     let c = codes.get(cle) || clients.find(x => normal(x.nom) === cle);
-    if (!c) { let k = nouveauCode(); while (trouverClient(k)) k = nouveauCode(); c = await creerClient(k, nom, adresse); }
+    if (!c) { let k = nouveauCode(); while (trouverClient(k)) k = nouveauCode(); c = await creerClient(k, nom, adresse, telephone); }
     codes.set(cle, c);
-    const nf = { code: c.code, date: f.date || aujourdhui(), nom: c.nom, adresse: c.adresse,
+    const nf = { code: c.code, date: f.date || aujourdhui(), nom: c.nom, adresse: c.adresse, telephone: c.telephone || '',
       lignes: f.lignes.map(l => ({ d: PRODUIT, q: +l.q || 0, v: +l.v || 0 })), vir: +f.vir || 0, banque: f.banque || '', compte: f.compte || '' };
     await enregistrerFacture(nf); factures.push(nf); n++;
   }
