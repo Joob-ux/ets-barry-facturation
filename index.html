@@ -109,7 +109,6 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
       <button type="button" id="tabHist">Historique</button>
       <button type="button" id="logoutBtn" class="ghost">Déconnexion</button>
     </nav>
-    <button type="button" id="loginLink" class="ghost small">Espace administrateur</button>
   </header>
 
   <section class="panel narrow" id="espaceClient" hidden>
@@ -124,13 +123,13 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
   </section>
 
   <section class="panel narrow" id="espaceLogin" hidden>
-    <h2>Espace administrateur</h2>
+    <h2>Connexion</h2>
     <form id="loginForm" novalidate>
       <label>E-mail<input id="loginEmail" type="email" autocomplete="username"></label>
       <label>Mot de passe<input id="loginPass" type="password" autocomplete="current-password"></label>
       <div class="btns">
         <button class="primary" type="submit">Se connecter</button>
-        <button class="ghost" type="button" id="backToClient">Retour à l'espace client</button>
+        <button class="ghost" type="button" id="backToClient">Annuler</button>
       </div>
       <div class="msg err" id="loginMsg" role="status"></div>
     </form>

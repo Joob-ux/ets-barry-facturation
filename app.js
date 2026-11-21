@@ -530,7 +530,6 @@ function montrerEspace(espace) {
   $('espaceLogin').hidden = espace !== 'login';
   $('espaceAdmin').hidden = espace !== 'admin';
   $('adminNav').hidden = espace !== 'admin';
-  $('loginLink').hidden = espace === 'admin';
 }
 async function demarrerAdmin() {
   const { data, error } = await sb.rpc('etsbarry_est_admin');
@@ -558,15 +557,19 @@ $('localImportBtn').addEventListener('click', async () => {
     $('localImport').hidden = true; montrer('hist');
   } catch (e) { $('importMsg').textContent = erreurReseau(e); $('localImportBtn').disabled = false; }
 });
-$('loginLink').addEventListener('click', () => { montrerEspace('login'); $('loginEmail').focus(); });
-$('backToClient').addEventListener('click', () => montrerEspace('client'));
-$('logoutBtn').addEventListener('click', async () => { await sb.auth.signOut(); factures = []; clients = []; montrerEspace('client'); });
+// Connexion admin : aucune trace sur la page publique, on y accède par une adresse que seul l'admin connaît.
+const ADRESSE_ADMIN = '#gestion-barry';
+function verifierAdresse() { if (location.hash === ADRESSE_ADMIN && $('espaceAdmin').hidden) { montrerEspace('login'); $('loginEmail').focus(); } }
+window.addEventListener('hashchange', verifierAdresse);
+$('backToClient').addEventListener('click', () => { history.replaceState(null, '', location.pathname); montrerEspace('client'); });
+$('logoutBtn').addEventListener('click', async () => { await sb.auth.signOut(); factures = []; clients = []; history.replaceState(null, '', location.pathname); montrerEspace('client'); });
 $('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   $('loginMsg').textContent = 'Connexion…';
   const { error } = await sb.auth.signInWithPassword({ email: $('loginEmail').value.trim(), password: $('loginPass').value });
   if (error) { $('loginMsg').textContent = 'E-mail ou mot de passe incorrect.'; return; }
   $('loginPass').value = ''; $('loginMsg').textContent = '';
+  history.replaceState(null, '', location.pathname);
   demarrerAdmin();
 });
 
@@ -586,5 +589,5 @@ $('espaceForm').addEventListener('submit', async e => {
 
 (async () => {
   const { data } = await sb.auth.getSession();
-  if (data.session) demarrerAdmin(); else montrerEspace('client');
+  if (data.session) demarrerAdmin(); else { montrerEspace('client'); verifierAdresse(); }
 })();
