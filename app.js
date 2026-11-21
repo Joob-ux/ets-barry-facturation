@@ -533,7 +533,8 @@ function montrerEspace(espace) {
   $('loginLink').hidden = espace === 'admin';
 }
 async function demarrerAdmin() {
-  const { data } = await sb.rpc('etsbarry_est_admin');
+  const { data, error } = await sb.rpc('etsbarry_est_admin');
+  if (error) { montrerEspace('login'); $('loginMsg').textContent = 'Vérification impossible. Rechargez la page et réessayez.'; return; }
   if (!data) {
     await sb.auth.signOut();
     montrerEspace('login'); $('loginMsg').textContent = "Ce compte n'est pas administrateur."; return;
