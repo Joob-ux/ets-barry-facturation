@@ -4,7 +4,7 @@ const ENTREPRISE = {
   adresse: "Café l'Arbre, Central Park ex 4C, bureau 2019",
   ninea: '00527234',
   rc: 'SNDKR 2015A17272',
-  slogan: 'Café en graines · Vente en gros, demi-gros et détail'
+  slogan: 'Vente de café en graines en gros, demi-gros et détail'
 };
 const BANQUES = ['CBAO', 'Ecobank', 'Banque Agricole', 'Banque Atlantique', 'Bank of Africa', 'Banque Islamique du Sénégal'];
 const CLE = 'etsbarry-factures-v1';
