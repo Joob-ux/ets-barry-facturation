@@ -76,3 +76,10 @@ alter table public.etsbarry_clients drop constraint if exists etsbarry_clients_c
 alter table public.etsbarry_clients add constraint etsbarry_clients_code_check check (code ~ '^[A-Z0-9-]{1,20}$');
 alter table public.etsbarry_factures add column if not exists compte text not null default '' check (length(compte) <= 60);
 -- (etsbarry_compte renvoie aussi 'compte' : voir la migration etsbarry_code_libre_et_compte)
+
+-- 2026-11-21 : tous les champs facultatifs (facture sans client possible).
+alter table public.etsbarry_factures alter column code drop not null;
+alter table public.etsbarry_factures alter column nom set default '';
+alter table public.etsbarry_clients drop constraint if exists etsbarry_clients_nom_check;
+alter table public.etsbarry_clients alter column nom set default '';
+alter table public.etsbarry_clients add constraint etsbarry_clients_nom_check check (length(nom) <= 200);

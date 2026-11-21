@@ -71,7 +71,9 @@ async function creerClient(code, nom, adresse) {
   clients.push(c); return c;
 }
 // Code saisi par le gérant : majuscules, chiffres et tirets (les espaces deviennent des tirets).
-const normaliserCode = v => (v || '').trim().toUpperCase().replace(/\s+/g, '-');
+const normaliserCode = v => (v || '').trim().toUpperCase().replace(/\s+/g, '-').normalize('NFD').replace(/[^A-Z0-9-]/g, '').slice(0, 20);
+// Client créé sans code depuis la fiche client : il faut quand même un identifiant, on prend le suivant libre (CL1, CL2…).
+function codeLibre() { let i = 1; while (trouverClient('CL' + i)) i++; return 'CL' + i; }
 const codeValide = v => /^[A-Z0-9-]{1,20}$/.test(v);
 const erreurReseau = e => "Impossible d'enregistrer en ligne. Vérifiez la connexion internet et réessayez." + (e && e.message ? ' (' + e.message + ')' : '');
 
@@ -91,10 +93,9 @@ function remplirCodes() {
 function verifierCode() {
   const v = $('code').value.trim(), h = $('codeHint');
   h.className = 'hint';
-  if (!v) { h.textContent = "Tapez le code d'un client existant, ou un nouveau code pour créer le client."; return; }
+  if (!v) { h.textContent = "Facultatif. Tapez le code d'un client existant, ou un nouveau code pour créer le client."; return; }
   const c = trouverClient(v);
   if (c) { h.textContent = 'Client trouvé : ' + c.nom; h.classList.add('ok'); $('nom').value = c.nom; $('adresse').value = c.adresse; }
-  else if (!codeValide(normaliserCode(v))) { h.textContent = 'Code non valide : lettres, chiffres et tirets seulement.'; h.classList.add('bad'); }
   else { h.textContent = 'Nouveau client : il sera créé avec le code ' + normaliserCode(v) + '.'; }
   apercu();
 }
@@ -397,7 +398,7 @@ function ouvrirFormClient(c) {
   $('cSave').textContent = c ? 'Enregistrer' : 'Créer le client';
   $('cNom').value = c ? c.nom : ''; $('cAdresse').value = c ? c.adresse : '';
   $('cCode').value = c ? c.code : ''; $('cCode').readOnly = !!c;
-  $('cCodeHint').textContent = c ? 'Le code client ne peut pas être changé.' : 'Choisissez le code du client : lettres, chiffres et tirets (ex. BARRY-01).';
+  $('cCodeHint').textContent = c ? 'Le code client ne peut pas être changé.' : 'Code facultatif : lettres, chiffres et tirets (ex. BARRY-01).';
   $('cMsg').textContent = '';
   (c ? $('cNom') : $('cCode')).focus();
 }
@@ -408,19 +409,13 @@ $('clientForm').addEventListener('submit', async e => {
   const nom = $('cNom').value.trim(), adresse = $('cAdresse').value.trim();
   const m = $('cMsg'); m.classList.add('err');
   const code = normaliserCode($('cCode').value);
-  if (!clientEnEdition) {
-    if (!code) { m.textContent = 'Indiquez le code du client.'; return; }
-    if (!codeValide(code)) { m.textContent = 'Code non valide : lettres, chiffres et tirets seulement, 20 caractères au plus.'; return; }
-    if (trouverClient(code)) { m.textContent = 'Le code ' + code + ' est déjà utilisé par ' + trouverClient(code).nom + '.'; return; }
-  }
-  if (!nom) { m.textContent = 'Indiquez le nom du client.'; return; }
-  const meme = clients.find(x => normal(x.nom) === normal(nom) && x !== clientEnEdition);
-  if (meme) { m.textContent = 'Ce client existe déjà avec le code ' + meme.code + '.'; return; }
+  // Tout est facultatif. Seul un code déjà pris est refusé : deux clients ne peuvent pas partager un code.
+  if (!clientEnEdition && code && trouverClient(code)) { m.textContent = 'Le code ' + code + ' est déjà utilisé par ' + (trouverClient(code).nom || 'un autre client') + '.'; return; }
   let c = clientEnEdition;
   $('cSave').disabled = true;
   try {
     if (c) { c.nom = nom; c.adresse = adresse; await enregistrerClient(c); }
-    else c = await creerClient(code, nom, adresse);
+    else c = await creerClient(code || codeLibre(), nom, adresse);
   } catch (err) { m.textContent = err.message && err.message.startsWith('Le code') ? err.message : erreurReseau(err); return; }
   finally { $('cSave').disabled = false; }
   remplirCodes();
@@ -455,21 +450,17 @@ function montrer(vue) {
 $('f').addEventListener('submit', async e => {
   e.preventDefault();
   const lignes = lireLignes();
-  if (!$('nom').value.trim()) return message('Indiquez le nom du client.', true);
-  if (!lignes.length || lignes.some(l => l.q <= 0)) return message('Ajoutez au moins un produit avec une quantité.', true);
+  // Aucun champ obligatoire. On refuse seulement des montants impossibles (ils fausseraient les calculs).
   if (lignes.some(l => l.v > 1e10 || l.q > 1e7) || totalDe(lignes) > 1e13) return message('Un montant est trop grand. Vérifiez les quantités et les prix unitaires.', true);
-  if ((+$('virement').value || 0) > 0 && !$('banque').value) return message('Choisissez la banque du virement.', true);
   const nom = $('nom').value.trim(), adresse = $('adresse').value.trim();
   const code = normaliserCode($('code').value);
-  if (!code) return message('Indiquez le code client.', true);
-  let client = trouverClient(code);
-  if (!client && !codeValide(code)) return message('Code client non valide : lettres, chiffres et tirets seulement.', true);
+  let client = code ? trouverClient(code) : null;
   $('saveBtn').disabled = true; message('Enregistrement en ligne…');
   let f;
   try {
-    if (!client) client = await creerClient(code, nom, adresse);
-    else if (client.nom !== nom || client.adresse !== adresse) { client.nom = nom; client.adresse = adresse; await enregistrerClient(client); }
-    const data = { code: client.code, nom, adresse, lignes, vir: +$('virement').value || 0, banque: $('banque').value, compte: $('banque').value ? $('compte').value.trim() : '' };
+    if (!client && code) client = await creerClient(code, nom, adresse);
+    else if (client && (client.nom !== nom || client.adresse !== adresse)) { client.nom = nom; client.adresse = adresse; await enregistrerClient(client); }
+    const data = { code: client ? client.code : null, nom, adresse, lignes, vir: +$('virement').value || 0, banque: $('banque').value, compte: $('banque').value ? $('compte').value.trim() : '' };
     if (enEdition) f = { ...factures.find(x => x.no === enEdition), ...data };
     else f = { date: aujourdhui(), ...data };
     await enregistrerFacture(f);
@@ -480,7 +471,7 @@ $('f').addEventListener('submit', async e => {
   telechargerPDF(f);
   viderFormulaire();
   remplirCodes();
-  message('Facture N° ' + numero(f.no) + ' enregistrée pour le client ' + f.code + '.');
+  message('Facture N° ' + numero(f.no) + ' enregistrée' + (f.code ? ' pour le client ' + f.code : '') + '.');
 });
 ['nom', 'adresse', 'virement', 'banque'].forEach(id => $(id).addEventListener('input', apercu));
 $('code').addEventListener('input', verifierCode);
