@@ -244,14 +244,14 @@ function telechargerPDF(f) {
   // Totaux : petit tableau aligné à droite, la largeur s'adapte aux montants
   doc.autoTable({
     startY: doc.lastAutoTable.finalY + 6, margin: { left: W - M - 100, right: M }, tableWidth: 100,
-    body: [['Total', fcfa(total)], ['Virement reçu', fcfa(f.vir)], ...(f.banque ? [['Banque', f.banque]] : []), ['Reste à payer', fcfa(reste)]],
+    body: [['Total', fcfa(total)], ['Virement reçu', fcfa(f.vir)], ...(f.banque ? [['Banque', f.banque]] : []), ['Net à payer', fcfa(reste)]],
     theme: 'plain',
     styles: { font: 'helvetica', fontSize: 10.5, cellPadding: 2.2, textColor: encre },
     columnStyles: { 0: { cellWidth: 36 }, 1: { halign: 'right' } },
     didParseCell: d => {
       if (d.row.index === 0) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = [226, 236, 231]; }
       if (d.row.raw[0] === 'Banque') { d.cell.styles.textColor = gris; d.cell.styles.fontSize = 9.5; }
-      if (d.row.raw[0] === 'Reste à payer') { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = reste > 0 ? [164, 86, 11] : vert; }
+      if (d.row.raw[0] === 'Net à payer') { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = reste > 0 ? [164, 86, 11] : vert; }
     }
   });
 
@@ -263,9 +263,12 @@ function telechargerPDF(f) {
   y += lettres.length * 5 + 12;
 
   // Signature
-  if (y > 250) { doc.addPage(); y = 30; }
+  if (y > 245) { doc.addPage(); y = 30; }
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-  doc.text('Signature et cachet', W - M, y, { align: 'right' });
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+  doc.text('Le Gérant', W - M, y, { align: 'right' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(93, 107, 100);
+  doc.text('Signature et cachet', W - M, y + 5, { align: 'right' });
 
   // Pied de page
   doc.setDrawColor(211, 219, 214); doc.setLineWidth(0.3); doc.line(M, 279, W - M, 279);
