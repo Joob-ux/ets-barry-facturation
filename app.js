@@ -6,6 +6,9 @@ const ENTREPRISE = {
   rc: 'SNDKR 2015A17272',
   slogan: 'Vente de café en graines en gros, demi-gros et détail'
 };
+// Réglage de test : true = tout le monde voit clients et factures (lecture seule).
+// false = retour à l'espace client par code. Penser aussi à lancer supabase/fermer-acces-public.sql.
+const ACCES_PUBLIC = true;
 const BANQUES = ['CBAO', 'Ecobank', 'Banque Agricole', 'Banque Atlantique', 'Bank of Africa', 'Banque Islamique du Sénégal'];
 const CLE = 'etsbarry-factures-v1';
 const CLE_CLIENTS = 'etsbarry-clients-v1';
@@ -532,6 +535,7 @@ function montrerEspace(espace) {
   $('adminNav').hidden = espace !== 'admin';
 }
 // Lecture publique (choix de diop) : tout le monde voit clients et factures, sans rien pouvoir changer.
+function accueil() { if (ACCES_PUBLIC) demarrerLecture(); else { document.body.classList.remove('lecture'); montrerEspace('client'); } }
 async function demarrerLecture() {
   document.body.classList.add('lecture');
   montrerEspace('admin');
@@ -569,8 +573,8 @@ $('localImportBtn').addEventListener('click', async () => {
 const ADRESSE_ADMIN = '#gestion-barry';
 function verifierAdresse() { if (location.hash === ADRESSE_ADMIN && ($('espaceAdmin').hidden || document.body.classList.contains('lecture'))) { montrerEspace('login'); $('loginEmail').focus(); } }
 window.addEventListener('hashchange', verifierAdresse);
-$('backToClient').addEventListener('click', () => { history.replaceState(null, '', location.pathname); demarrerLecture(); });
-$('logoutBtn').addEventListener('click', async () => { await sb.auth.signOut(); factures = []; clients = []; history.replaceState(null, '', location.pathname); demarrerLecture(); });
+$('backToClient').addEventListener('click', () => { history.replaceState(null, '', location.pathname); accueil(); });
+$('logoutBtn').addEventListener('click', async () => { await sb.auth.signOut(); factures = []; clients = []; history.replaceState(null, '', location.pathname); accueil(); });
 $('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   $('loginMsg').textContent = 'Connexion…';
@@ -597,5 +601,5 @@ $('espaceForm').addEventListener('submit', async e => {
 
 (async () => {
   const { data } = await sb.auth.getSession();
-  if (data.session) demarrerAdmin(); else if (location.hash === ADRESSE_ADMIN) verifierAdresse(); else demarrerLecture();
+  if (data.session) demarrerAdmin(); else if (location.hash === ADRESSE_ADMIN) verifierAdresse(); else accueil();
 })();
