@@ -84,6 +84,38 @@ function viderFormulaire() {
 
 function message(t, erreur) { const m = $('msg'); m.textContent = t; m.classList.toggle('err', !!erreur); }
 
+// ---------- Montant en lettres ----------
+function enLettres(n) {
+  n = Math.round(n);
+  if (n === 0) return 'zéro';
+  const u = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize'];
+  const d = ['', 'dix', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante'];
+  const sous100 = x => {
+    if (x < 17) return u[x];
+    if (x < 20) return 'dix-' + u[x - 10];
+    if (x < 70) { const t = Math.floor(x / 10), r = x % 10; return d[t] + (r === 1 ? ' et un' : r ? '-' + u[r] : ''); }
+    if (x < 80) return 'soixante' + (x === 71 ? ' et onze' : '-' + sous100(x - 60));
+    if (x === 80) return 'quatre-vingts';
+    return 'quatre-vingt-' + sous100(x - 80);
+  };
+  const sous1000 = x => {
+    const c = Math.floor(x / 100), r = x % 100;
+    let t = c === 0 ? '' : c === 1 ? 'cent' : u[c] + ' cent' + (r === 0 ? 's' : '');
+    if (r) t += (t ? ' ' : '') + sous100(r);
+    return t;
+  };
+  const echelles = [[1e12, 'billion'], [1e9, 'milliard'], [1e6, 'million'], [1e3, 'mille']];
+  let out = [], reste = n;
+  for (const [v, nom] of echelles) {
+    const q = Math.floor(reste / v); reste %= v;
+    if (!q) continue;
+    if (nom === 'mille') out.push(q === 1 ? 'mille' : sous1000(q).replace(/(cent|vingt)s$/, '$1') + ' mille');
+    else out.push(enLettres(q) + ' ' + nom + (q > 1 ? 's' : ''));
+  }
+  if (reste) out.push(sous1000(reste));
+  return out.join(' ');
+}
+
 // ---------- PDF A4 ----------
 function telechargerPDF(f) {
   if (!window.jspdf) { alert("Le module PDF n'a pas pu se charger. Vérifiez la connexion internet."); return; }
@@ -106,37 +138,63 @@ function telechargerPDF(f) {
   doc.text('N° ' + numero(f.no), W - M, 28, { align: 'right' });
   doc.text('Date : ' + f.date, W - M, 33, { align: 'right' });
 
-  doc.setDrawColor(...vert); doc.setLineWidth(0.8); doc.line(M, 38, W - M, 38);
+  doc.setDrawColor(...vert); doc.setLineWidth(0.8); doc.line(M, 40, W - M, 40);
 
-  doc.setFontSize(8); doc.setTextColor(...gris); doc.text('FACTURÉ À', M, 47);
-  doc.setFontSize(11); doc.setTextColor(23, 32, 28); doc.setFont('helvetica', 'bold');
-  doc.text(f.nom || '—', M, 53);
+  // Bloc client, encadré
+  const encre = [23, 32, 28];
+  const adr = doc.splitTextToSize('Adresse (origine) : ' + (f.adresse || '—'), 82);
+  const hClient = 16 + adr.length * 5;
+  doc.setDrawColor(211, 219, 214); doc.setLineWidth(0.3);
+  doc.roundedRect(M, 46, 92, hClient, 1.5, 1.5);
+  doc.setFontSize(8); doc.setTextColor(...gris); doc.text('FACTURÉ À', M + 5, 52);
+  doc.setFontSize(11); doc.setTextColor(...encre); doc.setFont('helvetica', 'bold');
+  doc.text(doc.splitTextToSize(f.nom || '—', 82)[0], M + 5, 58);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-  doc.text('Adresse (origine) : ' + (f.adresse || '—'), M, 59);
+  doc.text(adr, M + 5, 64);
 
+  // Tableau des produits
+  const total = totalDe(f.lignes), reste = Math.max(0, total - f.vir);
   doc.autoTable({
-    startY: 67, margin: { left: M, right: M },
-    head: [['Désignation', 'Quantité', 'Valeur', 'Montant']],
-    body: f.lignes.map(l => [l.d || 'Marchandise', nombre(l.q), fcfa(l.v), fcfa(l.q * l.v)]),
-    styles: { font: 'helvetica', fontSize: 10, cellPadding: 2.5 },
-    headStyles: { fillColor: vert, textColor: 255 },
-    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+    startY: 46 + hClient + 8, margin: { left: M, right: M },
+    head: [['Désignation', 'Quantité', 'Valeur (FCFA)', 'Montant (FCFA)']],
+    body: f.lignes.map(l => [l.d || 'Marchandise', nombre(l.q), nombre(l.v), nombre(l.q * l.v)]),
+    styles: { font: 'helvetica', fontSize: 10, cellPadding: 2.5, textColor: encre, lineColor: [211, 219, 214], lineWidth: 0.2 },
+    headStyles: { fillColor: vert, textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [244, 247, 245] },
+    columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'right', cellWidth: 24 }, 2: { halign: 'right', cellWidth: 36 }, 3: { halign: 'right', cellWidth: 42 } },
     didParseCell: d => { if (d.section === 'head' && d.column.index > 0) d.cell.styles.halign = 'right'; }
   });
 
-  let y = doc.lastAutoTable.finalY + 10;
-  const total = totalDe(f.lignes), reste = Math.max(0, total - f.vir);
-  const ligneTotal = (lib, val, gras, couleur) => {
-    doc.setFont('helvetica', gras ? 'bold' : 'normal'); doc.setTextColor(...(couleur || [23, 32, 28]));
-    doc.text(lib, W - M - 70, y); doc.text(val, W - M, y, { align: 'right' }); y += 7;
-  };
-  doc.setFontSize(11);
-  ligneTotal('Total', fcfa(total), true);
-  ligneTotal('Virement reçu', fcfa(f.vir), false);
-  ligneTotal('Reste à payer', fcfa(reste), true, reste > 0 ? [164, 86, 11] : vert);
+  // Totaux : petit tableau aligné à droite, la largeur s'adapte aux montants
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 6, margin: { left: W - M - 90, right: M }, tableWidth: 90,
+    body: [['Total', fcfa(total)], ['Virement reçu', fcfa(f.vir)], ['Reste à payer', fcfa(reste)]],
+    theme: 'plain',
+    styles: { font: 'helvetica', fontSize: 10.5, cellPadding: 2.2, textColor: encre },
+    columnStyles: { 0: { cellWidth: 34 }, 1: { halign: 'right' } },
+    didParseCell: d => {
+      if (d.row.index === 0) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = [226, 236, 231]; }
+      if (d.row.index === 2) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = reste > 0 ? [164, 86, 11] : vert; }
+    }
+  });
 
-  doc.setFontSize(9); doc.setTextColor(...gris); doc.setFont('helvetica', 'normal');
-  doc.text('Merci de votre confiance.', W / 2, 280, { align: 'center' });
+  // Montant en lettres
+  let y = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(10); doc.setTextColor(...encre);
+  const lettres = doc.splitTextToSize('Arrêtée la présente facture à la somme de : ' + enLettres(total) + ' francs CFA.', W - 2 * M);
+  doc.setFont('helvetica', 'italic'); doc.text(lettres, M, y);
+  y += lettres.length * 5 + 12;
+
+  // Signature
+  if (y > 250) { doc.addPage(); y = 30; }
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+  doc.text('Signature et cachet', W - M, y, { align: 'right' });
+
+  // Pied de page
+  doc.setDrawColor(211, 219, 214); doc.setLineWidth(0.3); doc.line(M, 279, W - M, 279);
+  doc.setFontSize(8); doc.setTextColor(...gris);
+  doc.text(ENTREPRISE.nom + ' · ' + ENTREPRISE.adresse + ' · NINEA ' + ENTREPRISE.ninea + ' · RC ' + ENTREPRISE.rc, W / 2, 284, { align: 'center' });
+  doc.text('Merci de votre confiance.', W / 2, 288, { align: 'center' });
 
   doc.save('Facture-' + numero(f.no) + '-' + (f.nom || 'client').replace(/[^\p{L}\p{N}]+/gu, '-') + '.pdf');
 }
@@ -200,6 +258,7 @@ $('f').addEventListener('submit', e => {
   const lignes = lireLignes();
   if (!$('nom').value.trim()) return message('Indiquez le nom du client.', true);
   if (!lignes.length || lignes.some(l => l.q <= 0)) return message('Ajoutez au moins un produit avec une quantité.', true);
+  if (lignes.some(l => l.v > 1e10 || l.q > 1e7) || totalDe(lignes) > 1e13) return message('Un montant est trop grand. Vérifiez les quantités et les valeurs.', true);
   const data = { nom: $('nom').value.trim(), adresse: $('adresse').value.trim(), lignes, vir: +$('virement').value || 0 };
   let f;
   if (enEdition) { f = factures.find(x => x.no === enEdition); Object.assign(f, data); }
