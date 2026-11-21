@@ -6,9 +6,12 @@ const ENTREPRISE = {
   rc: 'SNDKR 2015A17272',
   slogan: 'Vente de café en graines en gros, demi-gros et détail'
 };
-// Réglage de test : true = tout le monde voit clients et factures (lecture seule).
-// false = retour à l'espace client par code. Penser aussi à lancer supabase/fermer-acces-public.sql.
-const ACCES_PUBLIC = true;
+// Réglage de l'accès sans connexion (phase de test) :
+//   'ouvert'  = tout le monde peut tout faire (factures, clients) — test en cours
+//   'lecture' = tout le monde voit tout, sans rien modifier
+//   'code'    = espace client par code (version normale)
+// Pour revenir à 'code', lancer aussi supabase/fermer-acces-public.sql dans Supabase.
+const ACCES = 'ouvert';
 const BANQUES = ['CBAO', 'Ecobank', 'Banque Agricole', 'Banque Atlantique', 'Bank of Africa', 'Banque Islamique du Sénégal'];
 const CLE = 'etsbarry-factures-v1';
 const CLE_CLIENTS = 'etsbarry-clients-v1';
@@ -535,7 +538,14 @@ function montrerEspace(espace) {
   $('adminNav').hidden = espace !== 'admin';
 }
 // Lecture publique (choix de diop) : tout le monde voit clients et factures, sans rien pouvoir changer.
-function accueil() { if (ACCES_PUBLIC) demarrerLecture(); else { document.body.classList.remove('lecture'); montrerEspace('client'); } }
+function accueil() { if (ACCES === 'ouvert') demarrerOuvert(); else if (ACCES === 'lecture') demarrerLecture(); else { document.body.classList.remove('lecture'); montrerEspace('client'); } }
+async function demarrerOuvert() {
+  document.body.classList.remove('lecture');
+  document.body.classList.add('ouvert');
+  montrerEspace('admin');
+  try { await charger(); } catch (e) { message('Connexion impossible. Rechargez la page.', true); }
+  remplirCodes(); viderFormulaire(); montrer('new');
+}
 async function demarrerLecture() {
   document.body.classList.add('lecture');
   montrerEspace('admin');
@@ -549,7 +559,7 @@ async function demarrerAdmin() {
     await sb.auth.signOut();
     montrerEspace('login'); $('loginMsg').textContent = "Ce compte n'est pas administrateur."; return;
   }
-  document.body.classList.remove('lecture');
+  document.body.classList.remove('lecture', 'ouvert');
   montrerEspace('admin');
   try { await charger(); } catch (e) { message(erreurReseau(e), true); }
   remplirCodes(); viderFormulaire(); montrer('new');
