@@ -8,6 +8,8 @@ const ENTREPRISE = {
 };
 const BANQUES = ['CBAO', 'Ecobank', 'Banque Agricole', 'Banque Atlantique', 'Bank of Africa', 'Banque Islamique du Sénégal'];
 const CLE = 'etsbarry-factures-v1';
+const CLE_CLIENTS = 'etsbarry-clients-v1';
+const PRODUIT = 'CAFÉ EN GRAINES';
 
 const $ = id => document.getElementById(id);
 // Espaces ordinaires : les polices du PDF n'affichent pas l'espace fine insécable.
@@ -18,26 +20,57 @@ const numero = no => String(no).padStart(4, '0');
 const totalDe = lignes => lignes.reduce((s, l) => s + l.q * l.v, 0);
 
 let factures = [];
+let clients = []; // { code: 'C001', nom, adresse }
 let logoData = null; // logo en data URL pour le PDF
 fetch('logo.jpg').then(r => r.ok ? r.blob() : null).then(b => { if (!b) return; const fr = new FileReader(); fr.onload = () => logoData = fr.result; fr.readAsDataURL(b); }).catch(() => {});
 let enEdition = null; // numéro de la facture en cours de modification
 
 function charger() {
   try { const s = JSON.parse(localStorage.getItem(CLE) || '[]'); if (Array.isArray(s)) factures = s; } catch (e) { factures = []; }
+  try { const s = JSON.parse(localStorage.getItem(CLE_CLIENTS) || '[]'); if (Array.isArray(s)) clients = s; } catch (e) { clients = []; }
+  // Anciennes factures sans code : on crée le compte client à partir du nom.
+  let change = false;
+  factures.forEach(f => { if (!f.code) { f.code = clientPour(f.nom, f.adresse).code; change = true; } });
+  if (change) sauver();
 }
 function sauver() {
-  try { localStorage.setItem(CLE, JSON.stringify(factures)); return true; }
+  try { localStorage.setItem(CLE, JSON.stringify(factures)); localStorage.setItem(CLE_CLIENTS, JSON.stringify(clients)); return true; }
   catch (e) { return false; }
+}
+
+// ---------- Clients ----------
+const normal = t => (t || '').trim().toLowerCase();
+const trouverClient = code => clients.find(c => normal(c.code) === normal(code));
+const prochainCode = () => 'C' + String(clients.reduce((m, c) => Math.max(m, parseInt(c.code.slice(1)) || 0), 0) + 1).padStart(3, '0');
+function clientPour(nom, adresse) {
+  let c = clients.find(x => normal(x.nom) === normal(nom));
+  if (!c) { c = { code: prochainCode(), nom: (nom || '').trim(), adresse: (adresse || '').trim() }; clients.push(c); }
+  return c;
+}
+const facturesDe = code => factures.filter(f => f.code === code).sort((a, b) => b.no - a.no);
+function remplirCodes() {
+  const dl = $('codesList'); dl.innerHTML = '';
+  clients.forEach(c => { const o = document.createElement('option'); o.value = c.code; o.label = c.nom; dl.appendChild(o); });
+}
+function verifierCode() {
+  const v = $('code').value.trim(), h = $('codeHint');
+  h.className = 'hint';
+  if (!v) { h.textContent = "Tapez le code d'un client existant. Laissez vide pour un nouveau client : son code sera créé."; return; }
+  const c = trouverClient(v);
+  if (c) { h.textContent = 'Client trouvé : ' + c.nom; h.classList.add('ok'); $('nom').value = c.nom; $('adresse').value = c.adresse; }
+  else { h.textContent = 'Aucun client avec ce code.'; h.classList.add('bad'); }
+  apercu();
 }
 const prochainNumero = () => factures.reduce((m, x) => Math.max(m, x.no), 0) + 1;
 
 // ---------- Lignes de produits ----------
 let idLigne = 0;
-function ajouterLigne(d = '', q = '', v = '') {
+function ajouterLigne(q = '', v = '') {
+  const d = PRODUIT;
   const i = ++idLigne, div = document.createElement('div');
   div.className = 'line';
   div.innerHTML =
-    '<label>Désignation<input id="d' + i + '" autocomplete="off"></label>' +
+    '<label>Désignation<input id="d' + i + '" readonly tabindex="-1"></label>' +
     '<label>Quantité<input id="q' + i + '" type="number" min="0" step="any" inputmode="decimal"></label>' +
     '<label>Prix unitaire (FCFA)<input id="v' + i + '" type="number" min="0" step="1" inputmode="numeric"></label>' +
     '<button type="button" class="del" aria-label="Retirer ce produit">✕</button>';
@@ -51,8 +84,8 @@ function ajouterLigne(d = '', q = '', v = '') {
 function lireLignes() {
   return [...$('lines').children].map(l => {
     const [d, q, v] = l.querySelectorAll('input');
-    return { d: d.value.trim(), q: +q.value || 0, v: +v.value || 0 };
-  }).filter(l => l.d || l.q || l.v);
+    return { d: PRODUIT, q: +q.value || 0, v: +v.value || 0 };
+  }).filter(l => l.q || l.v);
 }
 
 // ---------- Aperçu ----------
@@ -61,9 +94,11 @@ function apercu() {
   $('pNo').textContent = 'N° ' + numero(enEdition || prochainNumero());
   $('pDate').textContent = enEdition ? factures.find(f => f.no === enEdition).date : aujourdhui();
   $('pNom').textContent = $('nom').value || '—';
+  const cc = trouverClient($('code').value);
+  $('pCode').textContent = cc ? '· Code client ' + cc.code : '';
   $('pAdr').textContent = $('adresse').value || '—';
   const tb = $('pLines'); tb.innerHTML = '';
-  (ls.length ? ls : [{ d: '—', q: 0, v: 0 }]).forEach(l => {
+  (ls.length ? ls : [{ d: PRODUIT, q: 0, v: 0 }]).forEach(l => {
     const tr = document.createElement('tr');
     [[l.d || 'Marchandise', ''], [nombre(l.q), 'num'], [fcfa(l.v), 'num'], [fcfa(l.q * l.v), 'num']].forEach(([x, c]) => {
       const td = document.createElement('td'); td.textContent = x; if (c) td.className = c; tr.appendChild(td);
@@ -80,7 +115,8 @@ function viderFormulaire() {
   enEdition = null;
   $('formTitle').textContent = 'Nouvelle facture';
   $('saveBtn').textContent = 'Enregistrer et télécharger le PDF';
-  ['nom', 'adresse', 'virement', 'banque'].forEach(id => $(id).value = '');
+  ['code', 'nom', 'adresse', 'virement', 'banque'].forEach(id => $(id).value = '');
+  verifierCode();
   $('lines').innerHTML = ''; ajouterLigne();
   apercu();
 }
@@ -151,7 +187,7 @@ function telechargerPDF(f) {
   const hClient = 16 + adr.length * 5;
   doc.setDrawColor(211, 219, 214); doc.setLineWidth(0.3);
   doc.roundedRect(M, 46, 92, hClient, 1.5, 1.5);
-  doc.setFontSize(8); doc.setTextColor(...gris); doc.text('FACTURÉ À', M + 5, 52);
+  doc.setFontSize(8); doc.setTextColor(...gris); doc.text('FACTURÉ À' + (f.code ? '   ·   CODE CLIENT : ' + f.code : ''), M + 5, 52);
   doc.setFontSize(11); doc.setTextColor(...encre); doc.setFont('helvetica', 'bold');
   doc.text(doc.splitTextToSize(f.nom || '—', 82)[0], M + 5, 58);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
@@ -209,13 +245,13 @@ function telechargerPDF(f) {
 function afficherHistorique() {
   const q = $('search').value.trim().toLowerCase();
   const liste = factures
-    .filter(f => !q || [f.nom, f.adresse, numero(f.no), f.banque || ''].join(' ').toLowerCase().includes(q))
+    .filter(f => !q || [f.nom, f.adresse, numero(f.no), f.banque || '', f.code || ''].join(' ').toLowerCase().includes(q))
     .sort((a, b) => b.no - a.no);
   const tb = $('hist'); tb.innerHTML = '';
   liste.forEach(f => {
     const total = totalDe(f.lignes), payee = f.vir >= total;
     const tr = document.createElement('tr');
-    [numero(f.no), f.date, f.nom, f.adresse].forEach(t => { const td = document.createElement('td'); td.textContent = t; tr.appendChild(td); });
+    [numero(f.no), f.date, (f.code ? f.code + ' · ' : '') + f.nom, f.adresse].forEach(t => { const td = document.createElement('td'); td.textContent = t; tr.appendChild(td); });
     const tt = document.createElement('td'); tt.className = 'num'; tt.textContent = fcfa(total); tr.appendChild(tt);
     const bq = document.createElement('td'); bq.textContent = f.banque || '—'; tr.appendChild(bq);
     const st = document.createElement('td'); const p = document.createElement('span');
@@ -240,13 +276,69 @@ function afficherHistorique() {
     .forEach(([k, v]) => { const d = document.createElement('div'); d.textContent = k; const bb = document.createElement('b'); bb.textContent = v; d.appendChild(bb); $('stats').appendChild(d); });
 }
 
+function afficherClients() {
+  const q = normal($('codeSearch').value);
+  const exact = q && trouverClient(q);
+  const liste = exact ? [exact] : clients.filter(c => !q || normal(c.code).includes(q) || normal(c.nom).includes(q));
+  const tb = $('clientsBody'); tb.innerHTML = '';
+  liste.sort((a, b) => a.code.localeCompare(b.code)).forEach(c => {
+    const fs = facturesDe(c.code), tot = fs.reduce((s, f) => s + totalDe(f.lignes), 0);
+    const reste = fs.reduce((s, f) => s + Math.max(0, totalDe(f.lignes) - f.vir), 0);
+    const tr = document.createElement('tr');
+    [[c.code, 'code'], [c.nom, ''], [c.adresse, ''], [nombre(fs.length), 'num'], [fcfa(tot), 'num'], [fcfa(reste), 'num']].forEach(([t, cl]) => {
+      const td = document.createElement('td'); td.textContent = t; if (cl) td.className = cl; tr.appendChild(td);
+    });
+    const td = document.createElement('td'); const bx = document.createElement('div'); bx.className = 'acts';
+    const b1 = document.createElement('button'); b1.type = 'button'; b1.className = 'ghost small'; b1.textContent = 'Voir les factures';
+    b1.addEventListener('click', () => { $('codeSearch').value = c.code; afficherClients(); });
+    bx.appendChild(b1); td.appendChild(bx); tr.appendChild(td);
+    tb.appendChild(tr);
+  });
+  $('clientsEmpty').hidden = clients.length > 0;
+
+  const det = $('clientDetail'); det.innerHTML = ''; det.hidden = !exact;
+  if (!exact) return;
+  const c = exact, fs = facturesDe(c.code);
+  const tot = fs.reduce((s, f) => s + totalDe(f.lignes), 0), recu = fs.reduce((s, f) => s + Math.min(f.vir, totalDe(f.lignes)), 0);
+  const card = document.createElement('div'); card.className = 'card';
+  const h = document.createElement('h3'); h.textContent = c.code + ' · ' + c.nom; card.appendChild(h);
+  const sub = document.createElement('div'); sub.className = 'stats';
+  [['Origine', c.adresse || '—'], ['Factures', nombre(fs.length)], ['Total facturé', fcfa(tot)], ['Reçu', fcfa(recu)], ['Reste à payer', fcfa(tot - recu)]]
+    .forEach(([k, v]) => { const d = document.createElement('div'); d.textContent = k; const bb = document.createElement('b'); bb.textContent = v; d.appendChild(bb); sub.appendChild(d); });
+  card.appendChild(sub);
+  const wrap = document.createElement('div'); wrap.className = 'tbl';
+  const t = document.createElement('table');
+  t.innerHTML = '<thead><tr><th>N°</th><th>Date</th><th class="num">Quantité</th><th class="num">Total</th><th>Banque</th><th>État</th><th></th></tr></thead>';
+  const body = document.createElement('tbody');
+  fs.forEach(f => {
+    const total = totalDe(f.lignes), payee = f.vir >= total;
+    const tr = document.createElement('tr');
+    [[numero(f.no), ''], [f.date, ''], [nombre(f.lignes.reduce((s, l) => s + l.q, 0)), 'num'], [fcfa(total), 'num'], [f.banque || '—', '']].forEach(([x, cl]) => {
+      const td = document.createElement('td'); td.textContent = x; if (cl) td.className = cl; tr.appendChild(td);
+    });
+    const st = document.createElement('td'); const p = document.createElement('span');
+    p.className = 'pill' + (payee ? '' : ' part'); p.textContent = payee ? 'Payée' : 'Reste ' + fcfa(total - f.vir); st.appendChild(p); tr.appendChild(st);
+    const td = document.createElement('td'); const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost small'; b.textContent = 'PDF';
+    b.addEventListener('click', () => telechargerPDF(f)); td.appendChild(b); tr.appendChild(td);
+    body.appendChild(tr);
+  });
+  t.appendChild(body); wrap.appendChild(t);
+  if (fs.length) card.appendChild(wrap);
+  const acts = document.createElement('div'); acts.className = 'row-actions';
+  const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'primary small'; nb.textContent = 'Nouvelle facture pour ce client';
+  nb.addEventListener('click', () => { viderFormulaire(); $('code').value = c.code; verifierCode(); montrer('new'); message(''); });
+  acts.appendChild(nb); card.appendChild(acts);
+  det.appendChild(card);
+}
+
 function modifier(no) {
   const f = factures.find(x => x.no === no); if (!f) return;
   enEdition = no;
   $('formTitle').textContent = 'Modifier la facture N° ' + numero(no);
   $('saveBtn').textContent = 'Enregistrer les changements et télécharger le PDF';
+  $('code').value = f.code || ''; verifierCode();
   $('nom').value = f.nom; $('adresse').value = f.adresse; $('virement').value = f.vir || ''; $('banque').value = f.banque || '';
-  $('lines').innerHTML = ''; f.lignes.forEach(l => ajouterLigne(l.d, l.q, l.v));
+  $('lines').innerHTML = ''; f.lignes.forEach(l => ajouterLigne(l.q, l.v));
   if (!f.lignes.length) ajouterLigne();
   montrer('new'); apercu(); message('');
 }
@@ -254,6 +346,9 @@ function modifier(no) {
 function montrer(vue) {
   $('viewNew').hidden = vue !== 'new';
   $('viewHist').hidden = vue !== 'hist';
+  $('viewClients').hidden = vue !== 'clients';
+  $('tabClients').toggleAttribute('aria-current', vue === 'clients'); if (vue === 'clients') $('tabClients').setAttribute('aria-current', 'page');
+  if (vue === 'clients') afficherClients();
   $('tabNew').toggleAttribute('aria-current', vue === 'new'); if (vue === 'new') $('tabNew').setAttribute('aria-current', 'page');
   $('tabHist').toggleAttribute('aria-current', vue === 'hist'); if (vue === 'hist') $('tabHist').setAttribute('aria-current', 'page');
   if (vue === 'hist') afficherHistorique();
@@ -267,16 +362,26 @@ $('f').addEventListener('submit', e => {
   if (!lignes.length || lignes.some(l => l.q <= 0)) return message('Ajoutez au moins un produit avec une quantité.', true);
   if (lignes.some(l => l.v > 1e10 || l.q > 1e7) || totalDe(lignes) > 1e13) return message('Un montant est trop grand. Vérifiez les quantités et les prix unitaires.', true);
   if ((+$('virement').value || 0) > 0 && !$('banque').value) return message('Choisissez la banque du virement.', true);
-  const data = { nom: $('nom').value.trim(), adresse: $('adresse').value.trim(), lignes, vir: +$('virement').value || 0, banque: $('banque').value };
+  let client;
+  if ($('code').value.trim()) {
+    client = trouverClient($('code').value);
+    if (!client) return message("Ce code client n'existe pas. Videz le champ pour créer un nouveau client.", true);
+  } else client = clientPour($('nom').value, $('adresse').value);
+  client.nom = $('nom').value.trim(); client.adresse = $('adresse').value.trim();
+  const data = { code: client.code, nom: $('nom').value.trim(), adresse: $('adresse').value.trim(), lignes, vir: +$('virement').value || 0, banque: $('banque').value };
   let f;
   if (enEdition) { f = factures.find(x => x.no === enEdition); Object.assign(f, data); }
   else { f = { no: prochainNumero(), date: aujourdhui(), ...data }; factures.push(f); }
   const ok = sauver();
   telechargerPDF(f);
   viderFormulaire();
-  message(ok ? 'Facture N° ' + numero(f.no) + ' enregistrée.' : "Facture créée, mais le navigateur n'a pas pu l'enregistrer dans l'historique.", !ok);
+  remplirCodes();
+  message(ok ? 'Facture N° ' + numero(f.no) + ' enregistrée pour le client ' + f.code + '.' : "Facture créée, mais le navigateur n'a pas pu l'enregistrer dans l'historique.", !ok);
 });
 ['nom', 'adresse', 'virement', 'banque'].forEach(id => $(id).addEventListener('input', apercu));
+$('code').addEventListener('input', verifierCode);
+$('tabClients').addEventListener('click', () => montrer('clients'));
+$('codeSearch').addEventListener('input', afficherClients);
 $('banque').addEventListener('change', apercu);
 $('addLine').addEventListener('click', () => { ajouterLigne(); apercu(); });
 $('reset').addEventListener('click', () => { viderFormulaire(); message(''); });
@@ -285,7 +390,7 @@ $('tabHist').addEventListener('click', () => montrer('hist'));
 $('search').addEventListener('input', afficherHistorique);
 
 $('exportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(factures, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ factures, clients }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'historique-ets-barry-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -293,11 +398,15 @@ $('exportBtn').addEventListener('click', () => {
 $('importFile').addEventListener('change', async e => {
   const file = e.target.files[0]; if (!file) return;
   try {
-    const data = JSON.parse(await file.text());
+    const brut = JSON.parse(await file.text());
+    const data = Array.isArray(brut) ? brut : brut && brut.factures;
     if (!Array.isArray(data)) throw new Error();
+    if (brut.clients) brut.clients.forEach(c => { if (c && c.code && !trouverClient(c.code)) clients.push(c); });
     const parNo = new Map(factures.map(f => [f.no, f]));
     data.forEach(f => { if (f && f.no && Array.isArray(f.lignes)) parNo.set(f.no, f); });
-    factures = [...parNo.values()]; sauver(); afficherHistorique();
+    factures = [...parNo.values()];
+    factures.forEach(f => { if (!f.code) f.code = clientPour(f.nom, f.adresse).code; });
+    sauver(); remplirCodes(); afficherHistorique();
   } catch (err) { alert("Ce fichier n'est pas une sauvegarde de l'historique."); }
   e.target.value = '';
 });
@@ -311,4 +420,5 @@ $('coInfo').innerHTML = '';
 });
 
 charger();
+remplirCodes();
 viderFormulaire();

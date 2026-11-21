@@ -37,6 +37,14 @@ input:focus{outline:2px solid var(--accent);outline-offset:1px}
 @media (max-width:480px){.row2{grid-template-columns:1fr}}
 .slogan{display:block;font-family:var(--body);font-style:normal;font-weight:600;font-size:.82rem;color:var(--ink)}
 .bk{display:block;font-size:.78rem;color:var(--muted)}
+input[readonly]{background:var(--soft);color:var(--muted);font-weight:600;cursor:not-allowed}
+.hint{font-size:.78rem;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:400}
+.hint.ok{color:var(--accent);font-weight:600}.hint.bad{color:var(--danger);font-weight:600}
+.code{font-family:var(--mono);font-weight:600;color:var(--accent)}
+.card{border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;display:grid;gap:12px;background:var(--bg)}
+.card h3{margin:0;font-family:var(--display);font-size:1.1rem}
+.card .row-actions{display:flex;flex-wrap:wrap;gap:8px}
+nav{flex-wrap:wrap}
 .lines{display:grid;gap:10px}
 .line{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.3fr) auto;gap:8px;align-items:end}
 @media (max-width:480px){.line{grid-template-columns:1fr 1fr}.line label:first-child{grid-column:1/-1}}
@@ -58,7 +66,7 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .brand-row{display:flex;align-items:center;gap:12px;min-width:0}
 .brand{font-family:var(--display);font-weight:800;font-size:1.2rem;color:var(--accent)}
 .brand small{display:block;font-family:var(--body);font-weight:400;font-size:.8rem;color:var(--muted)}
-.meta{text-align:right;font-size:.85rem}
+.meta{margin-left:auto;text-align:right;font-size:.85rem}
 .meta b{font-family:var(--mono);font-size:1rem}
 .client{font-size:.9rem}
 .k{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
@@ -89,6 +97,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
     <h1 class="title"><img src="logo.jpg" alt="" class="logo">Facturation Ets Barry</h1>
     <nav>
       <button type="button" id="tabNew" aria-current="page">Nouvelle facture</button>
+      <button type="button" id="tabClients">Clients</button>
       <button type="button" id="tabHist">Historique</button>
     </nav>
   </header>
@@ -97,6 +106,9 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
     <section class="panel">
       <h2 id="formTitle">Nouvelle facture</h2>
       <form id="f" novalidate>
+        <label>Code client<input id="code" autocomplete="off" placeholder="Ex. C001" list="codesList">
+          <span class="hint" id="codeHint">Tapez le code d'un client existant. Laissez vide pour un nouveau client : son code sera créé.</span></label>
+        <datalist id="codesList"></datalist>
         <label>Nom du client<input id="nom" autocomplete="off"></label>
         <label>Adresse (origine)<input id="adresse" autocomplete="off"></label>
         <div id="lines" class="lines"></div>
@@ -119,7 +131,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
         <div class="meta">Facture <b id="pNo"></b><br><span id="pDate"></span></div>
       </div>
       <div class="client">
-        <div class="k">Facturé à</div>
+        <div class="k">Facturé à <span id="pCode"></span></div>
         <div><strong id="pNom"></strong></div>
         <div id="pAdr"></div>
       </div>
@@ -135,6 +147,19 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
       <div class="foot">Merci de votre confiance.</div>
     </section>
   </div>
+
+  <section class="panel" id="viewClients" hidden>
+    <h2>Comptes clients</h2>
+    <div class="tools">
+      <input id="codeSearch" placeholder="Taper le code client (ex. C001) ou un nom" aria-label="Code client">
+    </div>
+    <div id="clientDetail" hidden></div>
+    <div class="tbl"><table>
+      <thead><tr><th>Code</th><th>Client</th><th>Origine</th><th class="num">Factures</th><th class="num">Total</th><th class="num">Reste à payer</th><th></th></tr></thead>
+      <tbody id="clientsBody"></tbody>
+    </table></div>
+    <div class="empty" id="clientsEmpty" hidden>Aucun client pour l'instant. Un compte est créé automatiquement à la première facture d'un client.</div>
+  </section>
 
   <section class="panel" id="viewHist" hidden>
     <h2>Historique des factures</h2>
