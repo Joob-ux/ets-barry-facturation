@@ -1,7 +1,7 @@
 // Facturation Ets Barry : saisie, aperçu, historique (stocké dans le navigateur) et PDF A4.
 const ENTREPRISE = {
   nom: 'ETS MAMADOU SADIO BARRY',
-  adresse: "Café l'Arbre, Central Park ex 4C, bureau 2019",
+  adresse: "Café Graine, Central Park ex 4C, bureau 2019",
   ninea: '00527234',
   rc: 'SNDKR 2015A17272',
   slogan: 'Vente de café en graines en gros, demi-gros et détail'
@@ -267,7 +267,7 @@ function telechargerPDF(f) {
   if (y > 245) { doc.addPage(); y = 30; }
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-  doc.text('Le Gérant', W - M, y, { align: 'right' });
+  doc.text('LE GÉRANT', W - M, y, { align: 'right' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(93, 107, 100);
   doc.text('Signature et cachet', W - M, y + 5, { align: 'right' });
 
