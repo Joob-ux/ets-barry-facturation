@@ -15,7 +15,7 @@ Deux espaces :
 Données en ligne dans Supabase (tables `etsbarry_*`, schéma dans `supabase/schema.sql`).
 Les règles de sécurité (RLS) n'autorisent que les administrateurs listés dans `etsbarry_admins`.
 L'espace client passe par la fonction `etsbarry_compte(code)`, qui ne renvoie qu'un seul compte.
-Les codes clients sont tirés au hasard (6 caractères) pour ne pas pouvoir être devinés.
+Le gérant choisit le code de chaque client (lettres, chiffres, tirets).
 
 Ajouter un administrateur : créer l'utilisateur dans Supabase (Authentication > Users > Add user), puis
 `insert into public.etsbarry_admins (user_id) select id from auth.users where email = '...';`

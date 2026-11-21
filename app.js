@@ -43,7 +43,7 @@ const enNombres = f => ({ ...f, no: Number(f.no), vir: Number(f.vir) || 0, ligne
 async function charger() {
   const [c, f] = await Promise.all([
     sb.from(T_CLIENTS).select('code,nom,adresse').order('code'),
-    sb.from(T_FACTURES).select('no,code,date,nom,adresse,lignes,vir,banque').order('no')
+    sb.from(T_FACTURES).select('no,code,date,nom,adresse,lignes,vir,banque,compte').order('no')
   ]);
   if (c.error || f.error) throw (c.error || f.error);
   clients = c.data; factures = f.data.map(enNombres);
@@ -53,7 +53,7 @@ async function enregistrerClient(c) {
   if (error) throw error;
 }
 async function enregistrerFacture(f) {
-  const ligne = { code: f.code, date: f.date, nom: f.nom, adresse: f.adresse, lignes: f.lignes, vir: f.vir, banque: f.banque || '' };
+  const ligne = { code: f.code, date: f.date, nom: f.nom, adresse: f.adresse, lignes: f.lignes, vir: f.vir, banque: f.banque || '', compte: f.compte || '' };
   if (f.no) ligne.no = f.no;
   const { data, error } = await sb.from(T_FACTURES).upsert(ligne).select('no').single();
   if (error) throw error;
@@ -63,16 +63,16 @@ async function supprimerFacture(no) {
   const { error } = await sb.from(T_FACTURES).delete().eq('no', no);
   if (error) throw error;
 }
-// Un nouveau client : code au hasard (difficile à deviner), créé dans la base.
-async function creerClient(nom, adresse) {
-  for (let essai = 0; essai < 5; essai++) {
-    const c = { code: nouveauCode(), nom: nom.trim(), adresse: (adresse || '').trim() };
-    const { error } = await sb.from(T_CLIENTS).insert(c);
-    if (!error) { clients.push(c); return c; }
-    if (error.code !== '23505') throw error; // 23505 : code déjà pris, on réessaie
-  }
-  throw new Error('code');
+// Un nouveau client, avec le code choisi par le gérant.
+async function creerClient(code, nom, adresse) {
+  const c = { code, nom: nom.trim(), adresse: (adresse || '').trim() };
+  const { error } = await sb.from(T_CLIENTS).insert(c);
+  if (error) throw error.code === '23505' ? new Error('Le code ' + code + ' est déjà utilisé par un autre client.') : error;
+  clients.push(c); return c;
 }
+// Code saisi par le gérant : majuscules, chiffres et tirets (les espaces deviennent des tirets).
+const normaliserCode = v => (v || '').trim().toUpperCase().replace(/\s+/g, '-');
+const codeValide = v => /^[A-Z0-9-]{1,20}$/.test(v);
 const erreurReseau = e => "Impossible d'enregistrer en ligne. Vérifiez la connexion internet et réessayez." + (e && e.message ? ' (' + e.message + ')' : '');
 
 // ---------- Clients ----------
@@ -91,10 +91,11 @@ function remplirCodes() {
 function verifierCode() {
   const v = $('code').value.trim(), h = $('codeHint');
   h.className = 'hint';
-  if (!v) { h.textContent = "Tapez le code d'un client existant. Laissez vide pour un nouveau client : son code sera créé."; return; }
+  if (!v) { h.textContent = "Tapez le code d'un client existant, ou un nouveau code pour créer le client."; return; }
   const c = trouverClient(v);
   if (c) { h.textContent = 'Client trouvé : ' + c.nom; h.classList.add('ok'); $('nom').value = c.nom; $('adresse').value = c.adresse; }
-  else { h.textContent = 'Aucun client avec ce code.'; h.classList.add('bad'); }
+  else if (!codeValide(normaliserCode(v))) { h.textContent = 'Code non valide : lettres, chiffres et tirets seulement.'; h.classList.add('bad'); }
+  else { h.textContent = 'Nouveau client : il sera créé avec le code ' + normaliserCode(v) + '.'; }
   apercu();
 }
 
@@ -142,7 +143,7 @@ function apercu() {
   });
   $('pT').textContent = fcfa(t);
   $('pVir').textContent = fcfa(vir);
-  $('pBanque').textContent = $('banque').value ? 'Banque : ' + $('banque').value : '';
+  $('pBanque').textContent = $('banque').value ? 'Banque : ' + $('banque').value + ($('compte').value.trim() ? ' · N° ' + $('compte').value.trim() : '') : '';
   $('pR').textContent = fcfa(Math.max(0, t - vir));
 }
 
@@ -150,7 +151,7 @@ function viderFormulaire() {
   enEdition = null;
   $('formTitle').textContent = 'Nouvelle facture';
   $('saveBtn').textContent = 'Enregistrer et télécharger le PDF';
-  ['code', 'nom', 'adresse', 'virement', 'banque'].forEach(id => $(id).value = '');
+  ['code', 'nom', 'adresse', 'virement', 'banque', 'compte'].forEach(id => $(id).value = '');
   verifierCode();
   $('lines').innerHTML = ''; ajouterLigne();
   apercu();
@@ -244,13 +245,13 @@ function telechargerPDF(f) {
   // Totaux : petit tableau aligné à droite, la largeur s'adapte aux montants
   doc.autoTable({
     startY: doc.lastAutoTable.finalY + 6, margin: { left: W - M - 100, right: M }, tableWidth: 100,
-    body: [['Total', fcfa(total)], ['Virement reçu', fcfa(f.vir)], ...(f.banque ? [['Banque', f.banque]] : []), ['Net à payer', fcfa(reste)]],
+    body: [['Total', fcfa(total)], ['Virement reçu', fcfa(f.vir)], ...(f.banque ? [['Banque', f.banque]] : []), ...(f.banque && f.compte ? [['N° de compte', f.compte]] : []), ['Net à payer', fcfa(reste)]],
     theme: 'plain',
     styles: { font: 'helvetica', fontSize: 10.5, cellPadding: 2.2, textColor: encre },
     columnStyles: { 0: { cellWidth: 36 }, 1: { halign: 'right' } },
     didParseCell: d => {
       if (d.row.index === 0) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = [226, 236, 231]; }
-      if (d.row.raw[0] === 'Banque') { d.cell.styles.textColor = gris; d.cell.styles.fontSize = 9.5; }
+      if (d.row.raw[0] === 'Banque' || d.row.raw[0] === 'N° de compte') { d.cell.styles.textColor = gris; d.cell.styles.fontSize = 9.5; }
       if (d.row.raw[0] === 'Net à payer') { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = reste > 0 ? [164, 86, 11] : vert; }
     }
   });
@@ -395,9 +396,10 @@ function ouvrirFormClient(c) {
   $('clientFormTitle').textContent = c ? 'Modifier le client ' + c.code : 'Nouveau client';
   $('cSave').textContent = c ? 'Enregistrer' : 'Créer le client';
   $('cNom').value = c ? c.nom : ''; $('cAdresse').value = c ? c.adresse : '';
-  $('cCodeHint').textContent = c ? 'Code client : ' + c.code : 'Le code du client sera créé automatiquement.';
+  $('cCode').value = c ? c.code : ''; $('cCode').readOnly = !!c;
+  $('cCodeHint').textContent = c ? 'Le code client ne peut pas être changé.' : 'Choisissez le code du client : lettres, chiffres et tirets (ex. BARRY-01).';
   $('cMsg').textContent = '';
-  $('cNom').focus();
+  (c ? $('cNom') : $('cCode')).focus();
 }
 $('addClientBtn').addEventListener('click', () => ouvrirFormClient(null));
 $('cCancel').addEventListener('click', () => { $('clientForm').hidden = true; });
@@ -405,6 +407,12 @@ $('clientForm').addEventListener('submit', async e => {
   e.preventDefault();
   const nom = $('cNom').value.trim(), adresse = $('cAdresse').value.trim();
   const m = $('cMsg'); m.classList.add('err');
+  const code = normaliserCode($('cCode').value);
+  if (!clientEnEdition) {
+    if (!code) { m.textContent = 'Indiquez le code du client.'; return; }
+    if (!codeValide(code)) { m.textContent = 'Code non valide : lettres, chiffres et tirets seulement, 20 caractères au plus.'; return; }
+    if (trouverClient(code)) { m.textContent = 'Le code ' + code + ' est déjà utilisé par ' + trouverClient(code).nom + '.'; return; }
+  }
   if (!nom) { m.textContent = 'Indiquez le nom du client.'; return; }
   const meme = clients.find(x => normal(x.nom) === normal(nom) && x !== clientEnEdition);
   if (meme) { m.textContent = 'Ce client existe déjà avec le code ' + meme.code + '.'; return; }
@@ -412,8 +420,8 @@ $('clientForm').addEventListener('submit', async e => {
   $('cSave').disabled = true;
   try {
     if (c) { c.nom = nom; c.adresse = adresse; await enregistrerClient(c); }
-    else c = await creerClient(nom, adresse);
-  } catch (err) { m.textContent = erreurReseau(err); return; }
+    else c = await creerClient(code, nom, adresse);
+  } catch (err) { m.textContent = err.message && err.message.startsWith('Le code') ? err.message : erreurReseau(err); return; }
   finally { $('cSave').disabled = false; }
   remplirCodes();
   $('clientForm').hidden = true;
@@ -426,7 +434,7 @@ function modifier(no) {
   $('formTitle').textContent = 'Modifier la facture N° ' + numero(no);
   $('saveBtn').textContent = 'Enregistrer les changements et télécharger le PDF';
   $('code').value = f.code || ''; verifierCode();
-  $('nom').value = f.nom; $('adresse').value = f.adresse; $('virement').value = f.vir || ''; $('banque').value = f.banque || '';
+  $('nom').value = f.nom; $('adresse').value = f.adresse; $('virement').value = f.vir || ''; $('banque').value = f.banque || ''; $('compte').value = f.compte || '';
   $('lines').innerHTML = ''; f.lignes.forEach(l => ajouterLigne(l.q, l.v));
   if (!f.lignes.length) ajouterLigne();
   montrer('new'); apercu(); message('');
@@ -452,21 +460,20 @@ $('f').addEventListener('submit', async e => {
   if (lignes.some(l => l.v > 1e10 || l.q > 1e7) || totalDe(lignes) > 1e13) return message('Un montant est trop grand. Vérifiez les quantités et les prix unitaires.', true);
   if ((+$('virement').value || 0) > 0 && !$('banque').value) return message('Choisissez la banque du virement.', true);
   const nom = $('nom').value.trim(), adresse = $('adresse').value.trim();
-  let client;
-  if ($('code').value.trim()) {
-    client = trouverClient($('code').value);
-    if (!client) return message("Ce code client n'existe pas. Videz le champ pour créer un nouveau client.", true);
-  } else client = clients.find(x => normal(x.nom) === normal(nom));
+  const code = normaliserCode($('code').value);
+  if (!code) return message('Indiquez le code client.', true);
+  let client = trouverClient(code);
+  if (!client && !codeValide(code)) return message('Code client non valide : lettres, chiffres et tirets seulement.', true);
   $('saveBtn').disabled = true; message('Enregistrement en ligne…');
   let f;
   try {
-    if (!client) client = await creerClient(nom, adresse);
+    if (!client) client = await creerClient(code, nom, adresse);
     else if (client.nom !== nom || client.adresse !== adresse) { client.nom = nom; client.adresse = adresse; await enregistrerClient(client); }
-    const data = { code: client.code, nom, adresse, lignes, vir: +$('virement').value || 0, banque: $('banque').value };
+    const data = { code: client.code, nom, adresse, lignes, vir: +$('virement').value || 0, banque: $('banque').value, compte: $('banque').value ? $('compte').value.trim() : '' };
     if (enEdition) f = { ...factures.find(x => x.no === enEdition), ...data };
     else f = { date: aujourdhui(), ...data };
     await enregistrerFacture(f);
-  } catch (err) { $('saveBtn').disabled = false; return message(erreurReseau(err), true); }
+  } catch (err) { $('saveBtn').disabled = false; return message(err.message && err.message.startsWith('Le code') ? err.message : erreurReseau(err), true); }
   $('saveBtn').disabled = false;
   const i = factures.findIndex(x => x.no === f.no);
   if (i >= 0) factures[i] = f; else factures.push(f);
@@ -479,7 +486,13 @@ $('f').addEventListener('submit', async e => {
 $('code').addEventListener('input', verifierCode);
 $('tabClients').addEventListener('click', () => montrer('clients'));
 $('codeSearch').addEventListener('input', afficherClients);
-$('banque').addEventListener('change', apercu);
+$('banque').addEventListener('change', () => {
+  // Reprend le dernier numéro de compte utilisé avec cette banque.
+  const b = $('banque').value, der = factures.slice().reverse().find(f => f.banque === b && f.compte);
+  $('compte').value = der ? der.compte : '';
+  apercu();
+});
+$('compte').addEventListener('input', apercu);
 $('addLine').addEventListener('click', () => { ajouterLigne(); apercu(); });
 $('reset').addEventListener('click', () => { viderFormulaire(); message(''); });
 $('tabNew').addEventListener('click', () => montrer('new'));
@@ -503,10 +516,10 @@ async function importer(liste, anciensClients) {
     const nom = (ancien ? ancien.nom : f.nom) || 'Client', adresse = (ancien ? ancien.adresse : f.adresse) || '';
     const cle = normal(nom);
     let c = codes.get(cle) || clients.find(x => normal(x.nom) === cle);
-    if (!c) c = await creerClient(nom, adresse);
+    if (!c) { let k = nouveauCode(); while (trouverClient(k)) k = nouveauCode(); c = await creerClient(k, nom, adresse); }
     codes.set(cle, c);
     const nf = { code: c.code, date: f.date || aujourdhui(), nom: c.nom, adresse: c.adresse,
-      lignes: f.lignes.map(l => ({ d: PRODUIT, q: +l.q || 0, v: +l.v || 0 })), vir: +f.vir || 0, banque: f.banque || '' };
+      lignes: f.lignes.map(l => ({ d: PRODUIT, q: +l.q || 0, v: +l.v || 0 })), vir: +f.vir || 0, banque: f.banque || '', compte: f.compte || '' };
     await enregistrerFacture(nf); factures.push(nf); n++;
   }
   remplirCodes(); afficherHistorique();

@@ -70,3 +70,9 @@ create policy "lecture publique des factures" on public.etsbarry_factures for se
 -- TEST (choix de diop, 2026-11-21) : tout le monde peut créer, modifier et supprimer.
 create policy "test ouvert clients" on public.etsbarry_clients for all to anon using (true) with check (true);
 create policy "test ouvert factures" on public.etsbarry_factures for all to anon using (true) with check (true);
+
+-- 2026-11-21 : codes choisis par le gérant, n° de compte bancaire sur la facture.
+alter table public.etsbarry_clients drop constraint if exists etsbarry_clients_code_check;
+alter table public.etsbarry_clients add constraint etsbarry_clients_code_check check (code ~ '^[A-Z0-9-]{1,20}$');
+alter table public.etsbarry_factures add column if not exists compte text not null default '' check (length(compte) <= 60);
+-- (etsbarry_compte renvoie aussi 'compte' : voir la migration etsbarry_code_libre_et_compte)

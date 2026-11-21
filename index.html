@@ -148,7 +148,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
       <h2 id="formTitle">Nouvelle facture</h2>
       <form id="f" novalidate>
         <label>Code client<input id="code" autocomplete="off" placeholder="Ex. C001" list="codesList">
-          <span class="hint" id="codeHint">Tapez le code d'un client existant. Laissez vide pour un nouveau client : son code sera créé.</span></label>
+          <span class="hint" id="codeHint">Tapez le code d'un client existant, ou un nouveau code pour créer le client.</span></label>
         <datalist id="codesList"></datalist>
         <label>Nom du client<input id="nom" autocomplete="off"></label>
         <label>Adresse (origine)<input id="adresse" autocomplete="off"></label>
@@ -158,6 +158,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
           <label>Virement reçu (FCFA)<input id="virement" type="number" min="0" step="1" inputmode="numeric"></label>
           <label>Banque du virement<select id="banque"><option value="">Choisir la banque</option></select></label>
         </div>
+        <label>N° de compte bancaire<input id="compte" autocomplete="off" placeholder="Ex. SN012 01001 012345678901 23"></label>
         <div class="btns">
           <button class="primary" type="submit" id="saveBtn">Enregistrer et télécharger le PDF</button>
           <button class="ghost" type="button" id="reset">Nouvelle facture vide</button>
@@ -198,9 +199,10 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
     <form id="clientForm" class="card admin-only" hidden novalidate>
       <h3 id="clientFormTitle">Nouveau client</h3>
       <div class="row2">
+        <label>Code client<input id="cCode" autocomplete="off" autocapitalize="characters" placeholder="Ex. BARRY-01"></label>
         <label>Nom du client<input id="cNom" autocomplete="off"></label>
-        <label>Adresse (origine)<input id="cAdresse" autocomplete="off"></label>
       </div>
+      <label>Adresse (origine)<input id="cAdresse" autocomplete="off"></label>
       <div class="hint" id="cCodeHint"></div>
       <div class="row-actions">
         <button class="primary small" type="submit" id="cSave">Créer le client</button>
