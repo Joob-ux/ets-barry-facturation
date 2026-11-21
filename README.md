@@ -1,6 +1,6 @@
 # Facturation Ets Barry
 
-Application web de facturation pour ETS MAMADOU SALIOU BARRY.
+Application web de facturation pour ETS MAMADOU SADIO BARRY.
 
 - Saisie : nom du client, adresse (origine), produits (désignation, quantité, prix unitaire), virement reçu et banque (CBAO, Ecobank, Banque Agricole, Banque Atlantique, Bank of Africa, Banque Islamique du Sénégal).
 - Calcul : total = quantité × prix unitaire ; reste à payer = total − virement. Montants en FCFA.

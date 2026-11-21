@@ -1,6 +1,6 @@
 // Facturation Ets Barry : saisie, aperçu, historique (stocké dans le navigateur) et PDF A4.
 const ENTREPRISE = {
-  nom: 'ETS MAMADOU SALIOU BARRY',
+  nom: 'ETS MAMADOU SADIO BARRY',
   adresse: "Café l'Arbre, Central Park ex 4C, bureau 2019",
   ninea: '00527234',
   rc: 'SNDKR 2015A17272',
