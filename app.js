@@ -290,7 +290,11 @@ function afficherClients() {
     });
     const td = document.createElement('td'); const bx = document.createElement('div'); bx.className = 'acts';
     const b1 = document.createElement('button'); b1.type = 'button'; b1.className = 'ghost small'; b1.textContent = 'Voir les factures';
-    b1.addEventListener('click', () => { $('codeSearch').value = c.code; afficherClients(); });
+    b1.textContent = 'Ouvrir le compte';
+    const ouvrir = () => { $('codeSearch').value = c.code; afficherClients(); $('clientDetail').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    b1.addEventListener('click', e => { e.stopPropagation(); ouvrir(); });
+    tr.addEventListener('click', ouvrir);
+    tr.tabIndex = 0; tr.addEventListener('keydown', e => { if (e.key === 'Enter') ouvrir(); });
     bx.appendChild(b1); td.appendChild(bx); tr.appendChild(td);
     tb.appendChild(tr);
   });
@@ -327,9 +331,43 @@ function afficherClients() {
   const acts = document.createElement('div'); acts.className = 'row-actions';
   const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'primary small'; nb.textContent = 'Nouvelle facture pour ce client';
   nb.addEventListener('click', () => { viderFormulaire(); $('code').value = c.code; verifierCode(); montrer('new'); message(''); });
-  acts.appendChild(nb); card.appendChild(acts);
+  acts.appendChild(nb);
+  const ed = document.createElement('button'); ed.type = 'button'; ed.className = 'ghost small'; ed.textContent = 'Modifier le client';
+  ed.addEventListener('click', () => ouvrirFormClient(c)); acts.appendChild(ed);
+  const back = document.createElement('button'); back.type = 'button'; back.className = 'ghost small'; back.textContent = 'Tous les clients';
+  back.addEventListener('click', () => { $('codeSearch').value = ''; afficherClients(); }); acts.appendChild(back);
+  card.appendChild(acts);
   det.appendChild(card);
 }
+
+// ---------- Ajouter / modifier un client ----------
+let clientEnEdition = null;
+function ouvrirFormClient(c) {
+  clientEnEdition = c || null;
+  $('clientForm').hidden = false;
+  $('clientFormTitle').textContent = c ? 'Modifier le client ' + c.code : 'Nouveau client';
+  $('cSave').textContent = c ? 'Enregistrer' : 'Créer le client';
+  $('cNom').value = c ? c.nom : ''; $('cAdresse').value = c ? c.adresse : '';
+  $('cCodeHint').textContent = c ? 'Code client : ' + c.code : 'Code attribué : ' + prochainCode();
+  $('cMsg').textContent = '';
+  $('cNom').focus();
+}
+$('addClientBtn').addEventListener('click', () => ouvrirFormClient(null));
+$('cCancel').addEventListener('click', () => { $('clientForm').hidden = true; });
+$('clientForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const nom = $('cNom').value.trim(), adresse = $('cAdresse').value.trim();
+  const m = $('cMsg'); m.classList.add('err');
+  if (!nom) { m.textContent = 'Indiquez le nom du client.'; return; }
+  const meme = clients.find(x => normal(x.nom) === normal(nom) && x !== clientEnEdition);
+  if (meme) { m.textContent = 'Ce client existe déjà avec le code ' + meme.code + '.'; return; }
+  let c = clientEnEdition;
+  if (c) { c.nom = nom; c.adresse = adresse; factures.filter(f => f.code === c.code).forEach(f => { f.nom = nom; f.adresse = adresse; }); }
+  else { c = { code: prochainCode(), nom, adresse }; clients.push(c); }
+  sauver(); remplirCodes();
+  $('clientForm').hidden = true;
+  $('codeSearch').value = c.code; afficherClients();
+});
 
 function modifier(no) {
   const f = factures.find(x => x.no === no); if (!f) return;

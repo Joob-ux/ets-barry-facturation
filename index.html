@@ -42,6 +42,8 @@ input[readonly]{background:var(--soft);color:var(--muted);font-weight:600;cursor
 .hint.ok{color:var(--accent);font-weight:600}.hint.bad{color:var(--danger);font-weight:600}
 .code{font-family:var(--mono);font-weight:600;color:var(--accent)}
 .card{border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;display:grid;gap:12px;background:var(--bg)}
+#clientsBody tr{cursor:pointer}
+#clientsBody tr:hover td{background:var(--soft)}
 .card h3{margin:0;font-family:var(--display);font-size:1.1rem}
 .card .row-actions{display:flex;flex-wrap:wrap;gap:8px}
 nav{flex-wrap:wrap}
@@ -152,7 +154,21 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
     <h2>Comptes clients</h2>
     <div class="tools">
       <input id="codeSearch" placeholder="Taper le code client (ex. C001) ou un nom" aria-label="Code client">
+      <button class="primary small" type="button" id="addClientBtn">+ Ajouter un client</button>
     </div>
+    <form id="clientForm" class="card" hidden novalidate>
+      <h3 id="clientFormTitle">Nouveau client</h3>
+      <div class="row2">
+        <label>Nom du client<input id="cNom" autocomplete="off"></label>
+        <label>Adresse (origine)<input id="cAdresse" autocomplete="off"></label>
+      </div>
+      <div class="hint" id="cCodeHint"></div>
+      <div class="row-actions">
+        <button class="primary small" type="submit" id="cSave">Créer le client</button>
+        <button class="ghost small" type="button" id="cCancel">Annuler</button>
+      </div>
+      <div class="msg" id="cMsg" role="status"></div>
+    </form>
     <div id="clientDetail" hidden></div>
     <div class="tbl"><table>
       <thead><tr><th>Code</th><th>Client</th><th>Origine</th><th class="num">Factures</th><th class="num">Total</th><th class="num">Reste à payer</th><th></th></tr></thead>
