@@ -62,3 +62,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
 $$;
 revoke all on function public.etsbarry_compte(text) from public;
 grant execute on function public.etsbarry_compte(text) to anon, authenticated;
+
+-- Choix de diop (2026-11-21) : clients et factures visibles par tous, en lecture seule.
+create policy "lecture publique des clients" on public.etsbarry_clients for select to anon, authenticated using (true);
+create policy "lecture publique des factures" on public.etsbarry_factures for select to anon, authenticated using (true);

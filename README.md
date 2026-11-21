@@ -9,7 +9,7 @@ Application web de facturation pour ETS MAMADOU SADIO BARRY.
 - Historique avec recherche, modification, suppression, sauvegarde et restauration (fichier JSON).
 
 Deux espaces :
-- **Espace client** (page d'accueil) : le client tape son code et voit ses factures, sans connexion.
+- **Page publique** (accueil) : tout le monde voit les clients et les factures, en lecture seule (choix d'Ets Barry).
 - **Espace administrateur** : caché sur la page publique, connexion e-mail + mot de passe (Supabase Auth). Seul un administrateur crée clients et factures.
 
 Données en ligne dans Supabase (tables `etsbarry_*`, schéma dans `supabase/schema.sql`).

@@ -50,6 +50,7 @@ input[readonly]{background:var(--soft);color:var(--muted);font-weight:600;cursor
 #espaceAdmin{display:grid;gap:20px}
 #espaceAdmin[hidden]{display:none}
 button:disabled{opacity:.6;cursor:wait}
+body.lecture .admin-only{display:none!important}
 .card h3{margin:0;font-family:var(--display);font-size:1.1rem}
 .card .row-actions{display:flex;flex-wrap:wrap;gap:8px}
 nav{flex-wrap:wrap}
@@ -104,10 +105,10 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
   <header>
     <h1 class="title"><img src="logo.jpg" alt="" class="logo">Facturation Ets Barry</h1>
     <nav id="adminNav" hidden>
-      <button type="button" id="tabNew" aria-current="page">Nouvelle facture</button>
+      <button type="button" id="tabNew" class="admin-only" aria-current="page">Nouvelle facture</button>
       <button type="button" id="tabClients">Clients</button>
       <button type="button" id="tabHist">Historique</button>
-      <button type="button" id="logoutBtn" class="ghost">Déconnexion</button>
+      <button type="button" id="logoutBtn" class="ghost admin-only">Déconnexion</button>
     </nav>
   </header>
 
@@ -136,7 +137,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
   </section>
 
   <div id="espaceAdmin" hidden>
-  <div class="panel notice" id="localImport" hidden>
+  <div class="panel notice admin-only" id="localImport" hidden>
     <span>Ce navigateur contient <b id="localCount">0</b> facture(s) enregistrée(s) avant la base en ligne.</span>
     <button class="primary small" type="button" id="localImportBtn">Les envoyer en ligne</button>
   </div>
@@ -191,9 +192,9 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
     <h2>Comptes clients</h2>
     <div class="tools">
       <input id="codeSearch" placeholder="Taper le code client (ex. C001) ou un nom" aria-label="Code client">
-      <button class="primary small" type="button" id="addClientBtn">+ Ajouter un client</button>
+      <button class="primary small admin-only" type="button" id="addClientBtn">+ Ajouter un client</button>
     </div>
-    <form id="clientForm" class="card" hidden novalidate>
+    <form id="clientForm" class="card admin-only" hidden novalidate>
       <h3 id="clientFormTitle">Nouveau client</h3>
       <div class="row2">
         <label>Nom du client<input id="cNom" autocomplete="off"></label>
@@ -219,8 +220,8 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
     <div class="stats" id="stats"></div>
     <div class="tools">
       <input id="search" placeholder="Chercher un client, une origine ou un numéro" aria-label="Chercher">
-      <button class="ghost small" type="button" id="exportBtn">Sauvegarder l'historique (fichier)</button>
-      <label class="ghost small" style="display:inline-block;border:1px solid var(--accent);border-radius:6px;padding:5px 10px;color:var(--accent);cursor:pointer;text-transform:none;letter-spacing:0;font-size:.82rem">Restaurer<input type="file" id="importFile" accept="application/json" hidden></label>
+      <button class="ghost small admin-only" type="button" id="exportBtn">Sauvegarder l'historique (fichier)</button>
+      <label class="ghost small admin-only" style="display:inline-block;border:1px solid var(--accent);border-radius:6px;padding:5px 10px;color:var(--accent);cursor:pointer;text-transform:none;letter-spacing:0;font-size:.82rem">Restaurer<input type="file" id="importFile" accept="application/json" hidden></label>
     </div>
     <div class="tbl"><table>
       <thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Origine</th><th class="num">Total</th><th>Banque</th><th>État</th><th></th></tr></thead>

@@ -289,8 +289,8 @@ function afficherHistorique() {
     const ac = document.createElement('td'); const box = document.createElement('div'); box.className = 'acts';
     const b = (txt, cls, fn) => { const x = document.createElement('button'); x.type = 'button'; x.className = cls + ' small'; x.textContent = txt; x.addEventListener('click', fn); box.appendChild(x); return x; };
     b('PDF', 'ghost', () => telechargerPDF(f));
-    b('Modifier', 'ghost', () => modifier(f.no));
-    const sup = b('Supprimer', 'danger', () => {
+    b('Modifier', 'ghost admin-only', () => modifier(f.no));
+    const sup = b('Supprimer', 'danger admin-only', () => {
       if (sup.dataset.ok) {
         supprimerFacture(f.no).then(() => { factures = factures.filter(x => x.no !== f.no); afficherHistorique(); })
           .catch(e => { sup.textContent = 'Erreur'; console.error(e); });
@@ -367,10 +367,10 @@ function carteCompte(c, fs, admin) {
   else { const v = document.createElement('div'); v.className = 'empty'; v.textContent = 'Aucune facture pour le moment.'; card.appendChild(v); }
   if (!admin) return card;
   const acts = document.createElement('div'); acts.className = 'row-actions';
-  const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'primary small'; nb.textContent = 'Nouvelle facture pour ce client';
+  const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'primary small admin-only'; nb.textContent = 'Nouvelle facture pour ce client';
   nb.addEventListener('click', () => { viderFormulaire(); $('code').value = c.code; verifierCode(); montrer('new'); message(''); });
   acts.appendChild(nb);
-  const ed = document.createElement('button'); ed.type = 'button'; ed.className = 'ghost small'; ed.textContent = 'Modifier le client';
+  const ed = document.createElement('button'); ed.type = 'button'; ed.className = 'ghost small admin-only'; ed.textContent = 'Modifier le client';
   ed.addEventListener('click', () => ouvrirFormClient(c)); acts.appendChild(ed);
   const back = document.createElement('button'); back.type = 'button'; back.className = 'ghost small'; back.textContent = 'Tous les clients';
   back.addEventListener('click', () => { $('codeSearch').value = ''; afficherClients(); }); acts.appendChild(back);
@@ -531,6 +531,13 @@ function montrerEspace(espace) {
   $('espaceAdmin').hidden = espace !== 'admin';
   $('adminNav').hidden = espace !== 'admin';
 }
+// Lecture publique (choix de diop) : tout le monde voit clients et factures, sans rien pouvoir changer.
+async function demarrerLecture() {
+  document.body.classList.add('lecture');
+  montrerEspace('admin');
+  try { await charger(); } catch (e) { $('importMsg').textContent = 'Connexion impossible. Rechargez la page.'; }
+  remplirCodes(); montrer('clients');
+}
 async function demarrerAdmin() {
   const { data, error } = await sb.rpc('etsbarry_est_admin');
   if (error) { montrerEspace('login'); $('loginMsg').textContent = 'Vérification impossible. Rechargez la page et réessayez.'; return; }
@@ -538,6 +545,7 @@ async function demarrerAdmin() {
     await sb.auth.signOut();
     montrerEspace('login'); $('loginMsg').textContent = "Ce compte n'est pas administrateur."; return;
   }
+  document.body.classList.remove('lecture');
   montrerEspace('admin');
   try { await charger(); } catch (e) { message(erreurReseau(e), true); }
   remplirCodes(); viderFormulaire(); montrer('new');
@@ -559,10 +567,10 @@ $('localImportBtn').addEventListener('click', async () => {
 });
 // Connexion admin : aucune trace sur la page publique, on y accède par une adresse que seul l'admin connaît.
 const ADRESSE_ADMIN = '#gestion-barry';
-function verifierAdresse() { if (location.hash === ADRESSE_ADMIN && $('espaceAdmin').hidden) { montrerEspace('login'); $('loginEmail').focus(); } }
+function verifierAdresse() { if (location.hash === ADRESSE_ADMIN && ($('espaceAdmin').hidden || document.body.classList.contains('lecture'))) { montrerEspace('login'); $('loginEmail').focus(); } }
 window.addEventListener('hashchange', verifierAdresse);
-$('backToClient').addEventListener('click', () => { history.replaceState(null, '', location.pathname); montrerEspace('client'); });
-$('logoutBtn').addEventListener('click', async () => { await sb.auth.signOut(); factures = []; clients = []; history.replaceState(null, '', location.pathname); montrerEspace('client'); });
+$('backToClient').addEventListener('click', () => { history.replaceState(null, '', location.pathname); demarrerLecture(); });
+$('logoutBtn').addEventListener('click', async () => { await sb.auth.signOut(); factures = []; clients = []; history.replaceState(null, '', location.pathname); demarrerLecture(); });
 $('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   $('loginMsg').textContent = 'Connexion…';
@@ -589,5 +597,5 @@ $('espaceForm').addEventListener('submit', async e => {
 
 (async () => {
   const { data } = await sb.auth.getSession();
-  if (data.session) demarrerAdmin(); else { montrerEspace('client'); verifierAdresse(); }
+  if (data.session) demarrerAdmin(); else if (location.hash === ADRESSE_ADMIN) verifierAdresse(); else demarrerLecture();
 })();
