@@ -31,8 +31,12 @@ nav button[aria-current="page"]{background:var(--accent);color:var(--accent-ink)
 h2{font-family:var(--display);font-size:1rem;font-weight:700;margin:0 0 14px}
 form{display:grid;gap:12px}
 label{display:grid;gap:4px;font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-input{font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 11px;width:100%;min-width:0}
+select,input{font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 11px;width:100%;min-width:0}
 input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:480px){.row2{grid-template-columns:1fr}}
+.slogan{display:block;font-family:var(--body);font-style:normal;font-weight:600;font-size:.82rem;color:var(--ink)}
+.bk{display:block;font-size:.78rem;color:var(--muted)}
 .lines{display:grid;gap:10px}
 .line{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.3fr) auto;gap:8px;align-items:end}
 @media (max-width:480px){.line{grid-template-columns:1fr 1fr}.line label:first-child{grid-column:1/-1}}
@@ -97,7 +101,10 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
         <label>Adresse (origine)<input id="adresse" autocomplete="off"></label>
         <div id="lines" class="lines"></div>
         <button class="ghost" type="button" id="addLine">+ Ajouter un produit</button>
-        <label>Virement reçu (FCFA)<input id="virement" type="number" min="0" step="1" inputmode="numeric"></label>
+        <div class="row2">
+          <label>Virement reçu (FCFA)<input id="virement" type="number" min="0" step="1" inputmode="numeric"></label>
+          <label>Banque du virement<select id="banque"><option value="">Choisir la banque</option></select></label>
+        </div>
         <div class="btns">
           <button class="primary" type="submit" id="saveBtn">Enregistrer et télécharger le PDF</button>
           <button class="ghost" type="button" id="reset">Nouvelle facture vide</button>
@@ -108,7 +115,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
 
     <section class="invoice" aria-label="Aperçu de la facture">
       <div class="inv-head">
-        <div class="brand-row"><img src="logo.jpg" alt="Logo Ets Barry" class="logo big"><div class="brand"><span id="coName"></span><small id="coInfo"></small></div></div>
+        <div class="brand-row"><img src="logo.jpg" alt="Logo Ets Barry" class="logo big"><div class="brand"><span id="coName"></span><em id="coSlogan" class="slogan"></em><small id="coInfo"></small></div></div>
         <div class="meta">Facture <b id="pNo"></b><br><span id="pDate"></span></div>
       </div>
       <div class="client">
@@ -117,12 +124,12 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
         <div id="pAdr"></div>
       </div>
       <div class="tbl"><table>
-        <thead><tr><th>Désignation</th><th class="num">Quantité</th><th class="num">Valeur</th><th class="num">Montant</th></tr></thead>
+        <thead><tr><th>Désignation</th><th class="num">Quantité</th><th class="num">Prix unitaire</th><th class="num">Montant</th></tr></thead>
         <tbody id="pLines"></tbody>
       </table></div>
       <div class="totals">
         <div class="grand"><span>Total</span><span class="num" id="pT"></span></div>
-        <div><span>Virement reçu</span><span class="num" id="pVir"></span></div>
+        <div><span>Virement reçu<span id="pBanque" class="bk"></span></span><span class="num" id="pVir"></span></div>
         <div class="due"><span>Reste à payer</span><span class="num" id="pR"></span></div>
       </div>
       <div class="foot">Merci de votre confiance.</div>
@@ -138,7 +145,7 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
       <label class="ghost small" style="display:inline-block;border:1px solid var(--accent);border-radius:6px;padding:5px 10px;color:var(--accent);cursor:pointer;text-transform:none;letter-spacing:0;font-size:.82rem">Restaurer<input type="file" id="importFile" accept="application/json" hidden></label>
     </div>
     <div class="tbl"><table>
-      <thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Origine</th><th class="num">Total</th><th>État</th><th></th></tr></thead>
+      <thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Origine</th><th class="num">Total</th><th>Banque</th><th>État</th><th></th></tr></thead>
       <tbody id="hist"></tbody>
     </table></div>
     <div class="empty" id="histEmpty" hidden>Aucune facture pour l'instant. Créez la première dans « Nouvelle facture ».</div>

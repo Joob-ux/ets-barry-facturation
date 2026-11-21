@@ -3,8 +3,10 @@ const ENTREPRISE = {
   nom: 'ETS MAMADOU SALIOU BARRY',
   adresse: "Café l'Arbre, Central Park ex 4C, bureau 2019",
   ninea: '00527234',
-  rc: 'SNDKR 2015A17272'
+  rc: 'SNDKR 2015A17272',
+  slogan: 'Café en graines · Vente en gros, demi-gros et détail'
 };
+const BANQUES = ['CBAO', 'Ecobank', 'Banque Agricole', 'Banque Atlantique', 'Bank of Africa', 'Banque Islamique du Sénégal'];
 const CLE = 'etsbarry-factures-v1';
 
 const $ = id => document.getElementById(id);
@@ -37,7 +39,7 @@ function ajouterLigne(d = '', q = '', v = '') {
   div.innerHTML =
     '<label>Désignation<input id="d' + i + '" autocomplete="off"></label>' +
     '<label>Quantité<input id="q' + i + '" type="number" min="0" step="any" inputmode="decimal"></label>' +
-    '<label>Valeur (FCFA)<input id="v' + i + '" type="number" min="0" step="1" inputmode="numeric"></label>' +
+    '<label>Prix unitaire (FCFA)<input id="v' + i + '" type="number" min="0" step="1" inputmode="numeric"></label>' +
     '<button type="button" class="del" aria-label="Retirer ce produit">✕</button>';
   $('lines').appendChild(div);
   $('d' + i).value = d; $('q' + i).value = q; $('v' + i).value = v;
@@ -70,6 +72,7 @@ function apercu() {
   });
   $('pT').textContent = fcfa(t);
   $('pVir').textContent = fcfa(vir);
+  $('pBanque').textContent = $('banque').value ? 'Banque : ' + $('banque').value : '';
   $('pR').textContent = fcfa(Math.max(0, t - vir));
 }
 
@@ -77,7 +80,7 @@ function viderFormulaire() {
   enEdition = null;
   $('formTitle').textContent = 'Nouvelle facture';
   $('saveBtn').textContent = 'Enregistrer et télécharger le PDF';
-  ['nom', 'adresse', 'virement'].forEach(id => $(id).value = '');
+  ['nom', 'adresse', 'virement', 'banque'].forEach(id => $(id).value = '');
   $('lines').innerHTML = ''; ajouterLigne();
   apercu();
 }
@@ -129,8 +132,10 @@ function telechargerPDF(f) {
   doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(...vert);
   doc.text(ENTREPRISE.nom, X, 22);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...gris);
-  doc.text(ENTREPRISE.adresse, X, 28);
-  doc.text('NINEA : ' + ENTREPRISE.ninea + '   ·   RC : ' + ENTREPRISE.rc, X, 33);
+  doc.setFont('helvetica', 'bold'); doc.setTextColor(23, 32, 28); doc.text(ENTREPRISE.slogan, X, 27.5);
+  doc.setFont('helvetica', 'normal'); doc.setTextColor(...gris);
+  doc.text(ENTREPRISE.adresse, X, 32);
+  doc.text('NINEA : ' + ENTREPRISE.ninea + '   ·   RC : ' + ENTREPRISE.rc, X, 36.5);
 
   doc.setTextColor(23, 32, 28); doc.setFontSize(18); doc.setFont('helvetica', 'bold');
   doc.text('FACTURE', W - M, 22, { align: 'right' });
@@ -138,7 +143,7 @@ function telechargerPDF(f) {
   doc.text('N° ' + numero(f.no), W - M, 28, { align: 'right' });
   doc.text('Date : ' + f.date, W - M, 33, { align: 'right' });
 
-  doc.setDrawColor(...vert); doc.setLineWidth(0.8); doc.line(M, 40, W - M, 40);
+  doc.setDrawColor(...vert); doc.setLineWidth(0.8); doc.line(M, 41, W - M, 41);
 
   // Bloc client, encadré
   const encre = [23, 32, 28];
@@ -156,25 +161,26 @@ function telechargerPDF(f) {
   const total = totalDe(f.lignes), reste = Math.max(0, total - f.vir);
   doc.autoTable({
     startY: 46 + hClient + 8, margin: { left: M, right: M },
-    head: [['Désignation', 'Quantité', 'Valeur (FCFA)', 'Montant (FCFA)']],
+    head: [['Désignation', 'Quantité', 'Prix unitaire (FCFA)', 'Montant (FCFA)']],
     body: f.lignes.map(l => [l.d || 'Marchandise', nombre(l.q), nombre(l.v), nombre(l.q * l.v)]),
     styles: { font: 'helvetica', fontSize: 10, cellPadding: 2.5, textColor: encre, lineColor: [211, 219, 214], lineWidth: 0.2 },
     headStyles: { fillColor: vert, textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [244, 247, 245] },
-    columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'right', cellWidth: 24 }, 2: { halign: 'right', cellWidth: 36 }, 3: { halign: 'right', cellWidth: 42 } },
+    columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'right', cellWidth: 24 }, 2: { halign: 'right', cellWidth: 38 }, 3: { halign: 'right', cellWidth: 42 } },
     didParseCell: d => { if (d.section === 'head' && d.column.index > 0) d.cell.styles.halign = 'right'; }
   });
 
   // Totaux : petit tableau aligné à droite, la largeur s'adapte aux montants
   doc.autoTable({
-    startY: doc.lastAutoTable.finalY + 6, margin: { left: W - M - 90, right: M }, tableWidth: 90,
-    body: [['Total', fcfa(total)], ['Virement reçu', fcfa(f.vir)], ['Reste à payer', fcfa(reste)]],
+    startY: doc.lastAutoTable.finalY + 6, margin: { left: W - M - 100, right: M }, tableWidth: 100,
+    body: [['Total', fcfa(total)], ['Virement reçu', fcfa(f.vir)], ...(f.banque ? [['Banque', f.banque]] : []), ['Reste à payer', fcfa(reste)]],
     theme: 'plain',
     styles: { font: 'helvetica', fontSize: 10.5, cellPadding: 2.2, textColor: encre },
-    columnStyles: { 0: { cellWidth: 34 }, 1: { halign: 'right' } },
+    columnStyles: { 0: { cellWidth: 36 }, 1: { halign: 'right' } },
     didParseCell: d => {
       if (d.row.index === 0) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = [226, 236, 231]; }
-      if (d.row.index === 2) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = reste > 0 ? [164, 86, 11] : vert; }
+      if (d.row.raw[0] === 'Banque') { d.cell.styles.textColor = gris; d.cell.styles.fontSize = 9.5; }
+      if (d.row.raw[0] === 'Reste à payer') { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = reste > 0 ? [164, 86, 11] : vert; }
     }
   });
 
@@ -203,7 +209,7 @@ function telechargerPDF(f) {
 function afficherHistorique() {
   const q = $('search').value.trim().toLowerCase();
   const liste = factures
-    .filter(f => !q || [f.nom, f.adresse, numero(f.no)].join(' ').toLowerCase().includes(q))
+    .filter(f => !q || [f.nom, f.adresse, numero(f.no), f.banque || ''].join(' ').toLowerCase().includes(q))
     .sort((a, b) => b.no - a.no);
   const tb = $('hist'); tb.innerHTML = '';
   liste.forEach(f => {
@@ -211,6 +217,7 @@ function afficherHistorique() {
     const tr = document.createElement('tr');
     [numero(f.no), f.date, f.nom, f.adresse].forEach(t => { const td = document.createElement('td'); td.textContent = t; tr.appendChild(td); });
     const tt = document.createElement('td'); tt.className = 'num'; tt.textContent = fcfa(total); tr.appendChild(tt);
+    const bq = document.createElement('td'); bq.textContent = f.banque || '—'; tr.appendChild(bq);
     const st = document.createElement('td'); const p = document.createElement('span');
     p.className = 'pill' + (payee ? '' : ' part'); p.textContent = payee ? 'Payée' : 'Reste ' + fcfa(total - f.vir);
     st.appendChild(p); tr.appendChild(st);
@@ -238,7 +245,7 @@ function modifier(no) {
   enEdition = no;
   $('formTitle').textContent = 'Modifier la facture N° ' + numero(no);
   $('saveBtn').textContent = 'Enregistrer les changements et télécharger le PDF';
-  $('nom').value = f.nom; $('adresse').value = f.adresse; $('virement').value = f.vir || '';
+  $('nom').value = f.nom; $('adresse').value = f.adresse; $('virement').value = f.vir || ''; $('banque').value = f.banque || '';
   $('lines').innerHTML = ''; f.lignes.forEach(l => ajouterLigne(l.d, l.q, l.v));
   if (!f.lignes.length) ajouterLigne();
   montrer('new'); apercu(); message('');
@@ -258,8 +265,9 @@ $('f').addEventListener('submit', e => {
   const lignes = lireLignes();
   if (!$('nom').value.trim()) return message('Indiquez le nom du client.', true);
   if (!lignes.length || lignes.some(l => l.q <= 0)) return message('Ajoutez au moins un produit avec une quantité.', true);
-  if (lignes.some(l => l.v > 1e10 || l.q > 1e7) || totalDe(lignes) > 1e13) return message('Un montant est trop grand. Vérifiez les quantités et les valeurs.', true);
-  const data = { nom: $('nom').value.trim(), adresse: $('adresse').value.trim(), lignes, vir: +$('virement').value || 0 };
+  if (lignes.some(l => l.v > 1e10 || l.q > 1e7) || totalDe(lignes) > 1e13) return message('Un montant est trop grand. Vérifiez les quantités et les prix unitaires.', true);
+  if ((+$('virement').value || 0) > 0 && !$('banque').value) return message('Choisissez la banque du virement.', true);
+  const data = { nom: $('nom').value.trim(), adresse: $('adresse').value.trim(), lignes, vir: +$('virement').value || 0, banque: $('banque').value };
   let f;
   if (enEdition) { f = factures.find(x => x.no === enEdition); Object.assign(f, data); }
   else { f = { no: prochainNumero(), date: aujourdhui(), ...data }; factures.push(f); }
@@ -268,7 +276,8 @@ $('f').addEventListener('submit', e => {
   viderFormulaire();
   message(ok ? 'Facture N° ' + numero(f.no) + ' enregistrée.' : "Facture créée, mais le navigateur n'a pas pu l'enregistrer dans l'historique.", !ok);
 });
-['nom', 'adresse', 'virement'].forEach(id => $(id).addEventListener('input', apercu));
+['nom', 'adresse', 'virement', 'banque'].forEach(id => $(id).addEventListener('input', apercu));
+$('banque').addEventListener('change', apercu);
 $('addLine').addEventListener('click', () => { ajouterLigne(); apercu(); });
 $('reset').addEventListener('click', () => { viderFormulaire(); message(''); });
 $('tabNew').addEventListener('click', () => montrer('new'));
@@ -293,7 +302,9 @@ $('importFile').addEventListener('change', async e => {
   e.target.value = '';
 });
 
+BANQUES.forEach(b => { const o = document.createElement('option'); o.value = o.textContent = b; $('banque').appendChild(o); });
 $('coName').textContent = ENTREPRISE.nom;
+$('coSlogan').textContent = ENTREPRISE.slogan;
 $('coInfo').innerHTML = '';
 [ENTREPRISE.adresse, 'NINEA : ' + ENTREPRISE.ninea + ' · RC : ' + ENTREPRISE.rc].forEach((t, i) => {
   if (i) $('coInfo').appendChild(document.createElement('br')); $('coInfo').appendChild(document.createTextNode(t));

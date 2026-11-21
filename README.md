@@ -2,8 +2,8 @@
 
 Application web de facturation pour ETS MAMADOU SALIOU BARRY.
 
-- Saisie : nom du client, adresse (origine), produits (désignation, quantité, valeur), virement reçu.
-- Calcul : total = quantité × valeur ; reste à payer = total − virement. Montants en FCFA.
+- Saisie : nom du client, adresse (origine), produits (désignation, quantité, prix unitaire), virement reçu et banque (CBAO, Ecobank, Banque Agricole, Banque Atlantique, Bank of Africa, Banque Islamique du Sénégal).
+- Calcul : total = quantité × prix unitaire ; reste à payer = total − virement. Montants en FCFA.
 - Facture PDF A4 téléchargée à l'enregistrement, et depuis l'historique.
 - Historique avec recherche, modification, suppression, sauvegarde et restauration (fichier JSON).
 
