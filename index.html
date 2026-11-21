@@ -44,6 +44,12 @@ input[readonly]{background:var(--soft);color:var(--muted);font-weight:600;cursor
 .card{border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;display:grid;gap:12px;background:var(--bg)}
 #clientsBody tr{cursor:pointer}
 #clientsBody tr:hover td{background:var(--soft)}
+.narrow{max-width:640px;width:100%;justify-self:center}
+.lead{margin:0 0 14px;color:var(--muted)}
+.notice{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:20px}
+#espaceAdmin{display:grid;gap:20px}
+#espaceAdmin[hidden]{display:none}
+button:disabled{opacity:.6;cursor:wait}
 .card h3{margin:0;font-family:var(--display);font-size:1.1rem}
 .card .row-actions{display:flex;flex-wrap:wrap;gap:8px}
 nav{flex-wrap:wrap}
@@ -97,12 +103,44 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
 <div class="wrap">
   <header>
     <h1 class="title"><img src="logo.jpg" alt="" class="logo">Facturation Ets Barry</h1>
-    <nav>
+    <nav id="adminNav" hidden>
       <button type="button" id="tabNew" aria-current="page">Nouvelle facture</button>
       <button type="button" id="tabClients">Clients</button>
       <button type="button" id="tabHist">Historique</button>
+      <button type="button" id="logoutBtn" class="ghost">Déconnexion</button>
     </nav>
+    <button type="button" id="loginLink" class="ghost small">Espace administrateur</button>
   </header>
+
+  <section class="panel narrow" id="espaceClient" hidden>
+    <h2>Espace client</h2>
+    <p class="lead">Tapez le code client donné par Ets Barry pour voir vos factures et les télécharger en PDF.</p>
+    <form id="espaceForm" class="tools" novalidate>
+      <input id="espaceCode" placeholder="Votre code client" autocomplete="off" autocapitalize="characters" aria-label="Code client">
+      <button class="primary" type="submit">Voir mes factures</button>
+    </form>
+    <div class="msg err" id="espaceMsg" role="status"></div>
+    <div id="espaceResultat"></div>
+  </section>
+
+  <section class="panel narrow" id="espaceLogin" hidden>
+    <h2>Espace administrateur</h2>
+    <form id="loginForm" novalidate>
+      <label>E-mail<input id="loginEmail" type="email" autocomplete="username"></label>
+      <label>Mot de passe<input id="loginPass" type="password" autocomplete="current-password"></label>
+      <div class="btns">
+        <button class="primary" type="submit">Se connecter</button>
+        <button class="ghost" type="button" id="backToClient">Retour à l'espace client</button>
+      </div>
+      <div class="msg err" id="loginMsg" role="status"></div>
+    </form>
+  </section>
+
+  <div id="espaceAdmin" hidden>
+  <div class="panel notice" id="localImport" hidden>
+    <span>Ce navigateur contient <b id="localCount">0</b> facture(s) enregistrée(s) avant la base en ligne.</span>
+    <button class="primary small" type="button" id="localImportBtn">Les envoyer en ligne</button>
+  </div>
 
   <div class="grid" id="viewNew">
     <section class="panel">
@@ -191,8 +229,11 @@ td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
     </table></div>
     <div class="empty" id="histEmpty" hidden>Aucune facture pour l'instant. Créez la première dans « Nouvelle facture ».</div>
   </section>
+  <div class="msg" id="importMsg" role="status"></div>
+  </div>
 </div>
 
+<script src="lib/supabase.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/jspdf.plugin.autotable.min.js"></script>
 <script src="app.js"></script>

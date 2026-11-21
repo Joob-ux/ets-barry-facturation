@@ -25,27 +25,57 @@ let logoData = null; // logo en data URL pour le PDF
 fetch('logo.jpg').then(r => r.ok ? r.blob() : null).then(b => { if (!b) return; const fr = new FileReader(); fr.onload = () => logoData = fr.result; fr.readAsDataURL(b); }).catch(() => {});
 let enEdition = null; // numéro de la facture en cours de modification
 
-function charger() {
-  try { const s = JSON.parse(localStorage.getItem(CLE) || '[]'); if (Array.isArray(s)) factures = s; } catch (e) { factures = []; }
-  try { const s = JSON.parse(localStorage.getItem(CLE_CLIENTS) || '[]'); if (Array.isArray(s)) clients = s; } catch (e) { clients = []; }
-  // Anciennes factures sans code : on crée le compte client à partir du nom.
-  let change = false;
-  factures.forEach(f => { if (!f.code) { f.code = clientPour(f.nom, f.adresse).code; change = true; } });
-  if (change) sauver();
+// ---------- Base en ligne (Supabase) ----------
+// La clé publique ne donne accès à rien seule : les règles de la base n'autorisent
+// que les administrateurs connectés, et l'espace client ne lit qu'un compte par son code.
+const SUPABASE_URL = 'https://yjxwwruceolwkwmmknul.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FQTKc9ddrtuQ9j5o2x-Dhg_H-wAELPY';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const T_CLIENTS = 'etsbarry_clients', T_FACTURES = 'etsbarry_factures';
+const enNombres = f => ({ ...f, no: Number(f.no), vir: Number(f.vir) || 0, lignes: (f.lignes || []).map(l => ({ d: l.d, q: Number(l.q) || 0, v: Number(l.v) || 0 })) });
+
+async function charger() {
+  const [c, f] = await Promise.all([
+    sb.from(T_CLIENTS).select('code,nom,adresse').order('code'),
+    sb.from(T_FACTURES).select('no,code,date,nom,adresse,lignes,vir,banque').order('no')
+  ]);
+  if (c.error || f.error) throw (c.error || f.error);
+  clients = c.data; factures = f.data.map(enNombres);
 }
-function sauver() {
-  try { localStorage.setItem(CLE, JSON.stringify(factures)); localStorage.setItem(CLE_CLIENTS, JSON.stringify(clients)); return true; }
-  catch (e) { return false; }
+async function enregistrerClient(c) {
+  const { error } = await sb.from(T_CLIENTS).upsert({ code: c.code, nom: c.nom, adresse: c.adresse });
+  if (error) throw error;
 }
+async function enregistrerFacture(f) {
+  const ligne = { code: f.code, date: f.date, nom: f.nom, adresse: f.adresse, lignes: f.lignes, vir: f.vir, banque: f.banque || '' };
+  if (f.no) ligne.no = f.no;
+  const { data, error } = await sb.from(T_FACTURES).upsert(ligne).select('no').single();
+  if (error) throw error;
+  f.no = Number(data.no);
+}
+async function supprimerFacture(no) {
+  const { error } = await sb.from(T_FACTURES).delete().eq('no', no);
+  if (error) throw error;
+}
+// Un nouveau client : code au hasard (difficile à deviner), créé dans la base.
+async function creerClient(nom, adresse) {
+  for (let essai = 0; essai < 5; essai++) {
+    const c = { code: nouveauCode(), nom: nom.trim(), adresse: (adresse || '').trim() };
+    const { error } = await sb.from(T_CLIENTS).insert(c);
+    if (!error) { clients.push(c); return c; }
+    if (error.code !== '23505') throw error; // 23505 : code déjà pris, on réessaie
+  }
+  throw new Error('code');
+}
+const erreurReseau = e => "Impossible d'enregistrer en ligne. Vérifiez la connexion internet et réessayez." + (e && e.message ? ' (' + e.message + ')' : '');
 
 // ---------- Clients ----------
 const normal = t => (t || '').trim().toLowerCase();
 const trouverClient = code => clients.find(c => normal(c.code) === normal(code));
-const prochainCode = () => 'C' + String(clients.reduce((m, c) => Math.max(m, parseInt(c.code.slice(1)) || 0), 0) + 1).padStart(3, '0');
-function clientPour(nom, adresse) {
-  let c = clients.find(x => normal(x.nom) === normal(nom));
-  if (!c) { c = { code: prochainCode(), nom: (nom || '').trim(), adresse: (adresse || '').trim() }; clients.push(c); }
-  return c;
+const LETTRES_CODE = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // sans 0/O, 1/I/L pour éviter les confusions
+function nouveauCode() {
+  const r = crypto.getRandomValues(new Uint32Array(6));
+  return [...r].map(x => LETTRES_CODE[x % LETTRES_CODE.length]).join('');
 }
 const facturesDe = code => factures.filter(f => f.code === code).sort((a, b) => b.no - a.no);
 function remplirCodes() {
@@ -61,7 +91,6 @@ function verifierCode() {
   else { h.textContent = 'Aucun client avec ce code.'; h.classList.add('bad'); }
   apercu();
 }
-const prochainNumero = () => factures.reduce((m, x) => Math.max(m, x.no), 0) + 1;
 
 // ---------- Lignes de produits ----------
 let idLigne = 0;
@@ -91,7 +120,7 @@ function lireLignes() {
 // ---------- Aperçu ----------
 function apercu() {
   const ls = lireLignes(), vir = +$('virement').value || 0, t = totalDe(ls);
-  $('pNo').textContent = 'N° ' + numero(enEdition || prochainNumero());
+  $('pNo').textContent = enEdition ? 'N° ' + numero(enEdition) : 'N° (à l\'enregistrement)';
   $('pDate').textContent = enEdition ? factures.find(f => f.no === enEdition).date : aujourdhui();
   $('pNom').textContent = $('nom').value || '—';
   const cc = trouverClient($('code').value);
@@ -262,7 +291,10 @@ function afficherHistorique() {
     b('PDF', 'ghost', () => telechargerPDF(f));
     b('Modifier', 'ghost', () => modifier(f.no));
     const sup = b('Supprimer', 'danger', () => {
-      if (sup.dataset.ok) { factures = factures.filter(x => x.no !== f.no); sauver(); afficherHistorique(); }
+      if (sup.dataset.ok) {
+        supprimerFacture(f.no).then(() => { factures = factures.filter(x => x.no !== f.no); afficherHistorique(); })
+          .catch(e => { sup.textContent = 'Erreur'; console.error(e); });
+      }
       else { sup.dataset.ok = '1'; sup.textContent = 'Confirmer ?'; setTimeout(() => { delete sup.dataset.ok; sup.textContent = 'Supprimer'; }, 3000); }
     });
     ac.appendChild(box); tr.appendChild(ac);
@@ -302,7 +334,11 @@ function afficherClients() {
 
   const det = $('clientDetail'); det.innerHTML = ''; det.hidden = !exact;
   if (!exact) return;
-  const c = exact, fs = facturesDe(c.code);
+  det.appendChild(carteCompte(exact, facturesDe(exact.code), true));
+}
+
+// Carte d'un compte client (espace admin et espace client).
+function carteCompte(c, fs, admin) {
   const tot = fs.reduce((s, f) => s + totalDe(f.lignes), 0), recu = fs.reduce((s, f) => s + Math.min(f.vir, totalDe(f.lignes)), 0);
   const card = document.createElement('div'); card.className = 'card';
   const h = document.createElement('h3'); h.textContent = c.code + ' · ' + c.nom; card.appendChild(h);
@@ -328,6 +364,8 @@ function afficherClients() {
   });
   t.appendChild(body); wrap.appendChild(t);
   if (fs.length) card.appendChild(wrap);
+  else { const v = document.createElement('div'); v.className = 'empty'; v.textContent = 'Aucune facture pour le moment.'; card.appendChild(v); }
+  if (!admin) return card;
   const acts = document.createElement('div'); acts.className = 'row-actions';
   const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'primary small'; nb.textContent = 'Nouvelle facture pour ce client';
   nb.addEventListener('click', () => { viderFormulaire(); $('code').value = c.code; verifierCode(); montrer('new'); message(''); });
@@ -337,7 +375,7 @@ function afficherClients() {
   const back = document.createElement('button'); back.type = 'button'; back.className = 'ghost small'; back.textContent = 'Tous les clients';
   back.addEventListener('click', () => { $('codeSearch').value = ''; afficherClients(); }); acts.appendChild(back);
   card.appendChild(acts);
-  det.appendChild(card);
+  return card;
 }
 
 // ---------- Ajouter / modifier un client ----------
@@ -348,13 +386,13 @@ function ouvrirFormClient(c) {
   $('clientFormTitle').textContent = c ? 'Modifier le client ' + c.code : 'Nouveau client';
   $('cSave').textContent = c ? 'Enregistrer' : 'Créer le client';
   $('cNom').value = c ? c.nom : ''; $('cAdresse').value = c ? c.adresse : '';
-  $('cCodeHint').textContent = c ? 'Code client : ' + c.code : 'Code attribué : ' + prochainCode();
+  $('cCodeHint').textContent = c ? 'Code client : ' + c.code : 'Le code du client sera créé automatiquement.';
   $('cMsg').textContent = '';
   $('cNom').focus();
 }
 $('addClientBtn').addEventListener('click', () => ouvrirFormClient(null));
 $('cCancel').addEventListener('click', () => { $('clientForm').hidden = true; });
-$('clientForm').addEventListener('submit', e => {
+$('clientForm').addEventListener('submit', async e => {
   e.preventDefault();
   const nom = $('cNom').value.trim(), adresse = $('cAdresse').value.trim();
   const m = $('cMsg'); m.classList.add('err');
@@ -362,9 +400,13 @@ $('clientForm').addEventListener('submit', e => {
   const meme = clients.find(x => normal(x.nom) === normal(nom) && x !== clientEnEdition);
   if (meme) { m.textContent = 'Ce client existe déjà avec le code ' + meme.code + '.'; return; }
   let c = clientEnEdition;
-  if (c) { c.nom = nom; c.adresse = adresse; factures.filter(f => f.code === c.code).forEach(f => { f.nom = nom; f.adresse = adresse; }); }
-  else { c = { code: prochainCode(), nom, adresse }; clients.push(c); }
-  sauver(); remplirCodes();
+  $('cSave').disabled = true;
+  try {
+    if (c) { c.nom = nom; c.adresse = adresse; await enregistrerClient(c); }
+    else c = await creerClient(nom, adresse);
+  } catch (err) { m.textContent = erreurReseau(err); return; }
+  finally { $('cSave').disabled = false; }
+  remplirCodes();
   $('clientForm').hidden = true;
   $('codeSearch').value = c.code; afficherClients();
 });
@@ -393,28 +435,36 @@ function montrer(vue) {
 }
 
 // ---------- Événements ----------
-$('f').addEventListener('submit', e => {
+$('f').addEventListener('submit', async e => {
   e.preventDefault();
   const lignes = lireLignes();
   if (!$('nom').value.trim()) return message('Indiquez le nom du client.', true);
   if (!lignes.length || lignes.some(l => l.q <= 0)) return message('Ajoutez au moins un produit avec une quantité.', true);
   if (lignes.some(l => l.v > 1e10 || l.q > 1e7) || totalDe(lignes) > 1e13) return message('Un montant est trop grand. Vérifiez les quantités et les prix unitaires.', true);
   if ((+$('virement').value || 0) > 0 && !$('banque').value) return message('Choisissez la banque du virement.', true);
+  const nom = $('nom').value.trim(), adresse = $('adresse').value.trim();
   let client;
   if ($('code').value.trim()) {
     client = trouverClient($('code').value);
     if (!client) return message("Ce code client n'existe pas. Videz le champ pour créer un nouveau client.", true);
-  } else client = clientPour($('nom').value, $('adresse').value);
-  client.nom = $('nom').value.trim(); client.adresse = $('adresse').value.trim();
-  const data = { code: client.code, nom: $('nom').value.trim(), adresse: $('adresse').value.trim(), lignes, vir: +$('virement').value || 0, banque: $('banque').value };
+  } else client = clients.find(x => normal(x.nom) === normal(nom));
+  $('saveBtn').disabled = true; message('Enregistrement en ligne…');
   let f;
-  if (enEdition) { f = factures.find(x => x.no === enEdition); Object.assign(f, data); }
-  else { f = { no: prochainNumero(), date: aujourdhui(), ...data }; factures.push(f); }
-  const ok = sauver();
+  try {
+    if (!client) client = await creerClient(nom, adresse);
+    else if (client.nom !== nom || client.adresse !== adresse) { client.nom = nom; client.adresse = adresse; await enregistrerClient(client); }
+    const data = { code: client.code, nom, adresse, lignes, vir: +$('virement').value || 0, banque: $('banque').value };
+    if (enEdition) f = { ...factures.find(x => x.no === enEdition), ...data };
+    else f = { date: aujourdhui(), ...data };
+    await enregistrerFacture(f);
+  } catch (err) { $('saveBtn').disabled = false; return message(erreurReseau(err), true); }
+  $('saveBtn').disabled = false;
+  const i = factures.findIndex(x => x.no === f.no);
+  if (i >= 0) factures[i] = f; else factures.push(f);
   telechargerPDF(f);
   viderFormulaire();
   remplirCodes();
-  message(ok ? 'Facture N° ' + numero(f.no) + ' enregistrée pour le client ' + f.code + '.' : "Facture créée, mais le navigateur n'a pas pu l'enregistrer dans l'historique.", !ok);
+  message('Facture N° ' + numero(f.no) + ' enregistrée pour le client ' + f.code + '.');
 });
 ['nom', 'adresse', 'virement', 'banque'].forEach(id => $(id).addEventListener('input', apercu));
 $('code').addEventListener('input', verifierCode);
@@ -433,19 +483,36 @@ $('exportBtn').addEventListener('click', () => {
   a.download = 'historique-ets-barry-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
+// Envoie en ligne des factures venant d'une sauvegarde ou de l'ancien stockage du navigateur.
+// Les anciens numéros ne sont pas gardés : la base donne un nouveau numéro à chaque facture.
+async function importer(liste, anciensClients) {
+  const codes = new Map(); // ancien code ou nom -> client en ligne
+  let n = 0;
+  for (const f of liste.slice().sort((a, b) => a.no - b.no)) {
+    if (!f || !Array.isArray(f.lignes)) continue;
+    const ancien = anciensClients.find(c => c.code === f.code);
+    const nom = (ancien ? ancien.nom : f.nom) || 'Client', adresse = (ancien ? ancien.adresse : f.adresse) || '';
+    const cle = normal(nom);
+    let c = codes.get(cle) || clients.find(x => normal(x.nom) === cle);
+    if (!c) c = await creerClient(nom, adresse);
+    codes.set(cle, c);
+    const nf = { code: c.code, date: f.date || aujourdhui(), nom: c.nom, adresse: c.adresse,
+      lignes: f.lignes.map(l => ({ d: PRODUIT, q: +l.q || 0, v: +l.v || 0 })), vir: +f.vir || 0, banque: f.banque || '' };
+    await enregistrerFacture(nf); factures.push(nf); n++;
+  }
+  remplirCodes(); afficherHistorique();
+  $('importMsg').textContent = n + ' facture(s) envoyée(s) en ligne.';
+  return n;
+}
+
 $('importFile').addEventListener('change', async e => {
   const file = e.target.files[0]; if (!file) return;
   try {
     const brut = JSON.parse(await file.text());
     const data = Array.isArray(brut) ? brut : brut && brut.factures;
-    if (!Array.isArray(data)) throw new Error();
-    if (brut.clients) brut.clients.forEach(c => { if (c && c.code && !trouverClient(c.code)) clients.push(c); });
-    const parNo = new Map(factures.map(f => [f.no, f]));
-    data.forEach(f => { if (f && f.no && Array.isArray(f.lignes)) parNo.set(f.no, f); });
-    factures = [...parNo.values()];
-    factures.forEach(f => { if (!f.code) f.code = clientPour(f.nom, f.adresse).code; });
-    sauver(); remplirCodes(); afficherHistorique();
-  } catch (err) { alert("Ce fichier n'est pas une sauvegarde de l'historique."); }
+    if (!Array.isArray(data)) throw new Error('format');
+    await importer(data, brut.clients || []);
+  } catch (err) { $('importMsg').textContent = err && err.message === 'format' || err instanceof SyntaxError ? "Ce fichier n'est pas une sauvegarde de l'historique." : erreurReseau(err); }
   e.target.value = '';
 });
 
@@ -457,6 +524,66 @@ $('coInfo').innerHTML = '';
   if (i) $('coInfo').appendChild(document.createElement('br')); $('coInfo').appendChild(document.createTextNode(t));
 });
 
-charger();
-remplirCodes();
-viderFormulaire();
+// ---------- Connexion et espaces ----------
+function montrerEspace(espace) {
+  $('espaceClient').hidden = espace !== 'client';
+  $('espaceLogin').hidden = espace !== 'login';
+  $('espaceAdmin').hidden = espace !== 'admin';
+  $('adminNav').hidden = espace !== 'admin';
+  $('loginLink').hidden = espace === 'admin';
+}
+async function demarrerAdmin() {
+  const { data } = await sb.rpc('etsbarry_est_admin');
+  if (!data) {
+    await sb.auth.signOut();
+    montrerEspace('login'); $('loginMsg').textContent = "Ce compte n'est pas administrateur."; return;
+  }
+  montrerEspace('admin');
+  try { await charger(); } catch (e) { message(erreurReseau(e), true); }
+  remplirCodes(); viderFormulaire(); montrer('new');
+  // Anciennes factures gardées dans ce navigateur : proposer de les envoyer en ligne.
+  let locales = [];
+  try { locales = JSON.parse(localStorage.getItem(CLE) || '[]'); } catch (e) {}
+  $('localImport').hidden = !(Array.isArray(locales) && locales.length);
+  $('localCount').textContent = locales.length;
+}
+$('localImportBtn').addEventListener('click', async () => {
+  let locales = [], anciens = [];
+  try { locales = JSON.parse(localStorage.getItem(CLE) || '[]'); anciens = JSON.parse(localStorage.getItem(CLE_CLIENTS) || '[]'); } catch (e) {}
+  $('localImportBtn').disabled = true;
+  try {
+    await importer(locales, anciens);
+    try { localStorage.removeItem(CLE); localStorage.removeItem(CLE_CLIENTS); } catch (e) {}
+    $('localImport').hidden = true; montrer('hist');
+  } catch (e) { $('importMsg').textContent = erreurReseau(e); $('localImportBtn').disabled = false; }
+});
+$('loginLink').addEventListener('click', () => { montrerEspace('login'); $('loginEmail').focus(); });
+$('backToClient').addEventListener('click', () => montrerEspace('client'));
+$('logoutBtn').addEventListener('click', async () => { await sb.auth.signOut(); factures = []; clients = []; montrerEspace('client'); });
+$('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('loginMsg').textContent = 'Connexion…';
+  const { error } = await sb.auth.signInWithPassword({ email: $('loginEmail').value.trim(), password: $('loginPass').value });
+  if (error) { $('loginMsg').textContent = 'E-mail ou mot de passe incorrect.'; return; }
+  $('loginPass').value = ''; $('loginMsg').textContent = '';
+  demarrerAdmin();
+});
+
+// Espace client : on tape son code pour voir ses factures.
+$('espaceForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const code = $('espaceCode').value.trim().toUpperCase(), out = $('espaceResultat');
+  out.innerHTML = '';
+  if (!code) return;
+  $('espaceMsg').textContent = 'Recherche…';
+  const { data, error } = await sb.rpc('etsbarry_compte', { p_code: code });
+  if (error) { $('espaceMsg').textContent = 'Connexion impossible. Réessayez dans un instant.'; return; }
+  if (!data) { $('espaceMsg').textContent = 'Aucun compte avec ce code. Vérifiez le code donné par Ets Barry.'; return; }
+  $('espaceMsg').textContent = '';
+  out.appendChild(carteCompte(data.client, data.factures.map(enNombres), false));
+});
+
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if (data.session) demarrerAdmin(); else montrerEspace('client');
+})();
