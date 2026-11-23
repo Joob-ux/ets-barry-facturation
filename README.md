@@ -22,3 +22,9 @@ Ajouter un administrateur : créer l'utilisateur dans Supabase (Authentication >
 Pour publier : importer ce dépôt dans Vercel (aucun réglage de build).
 
 Bibliothèques incluses dans `lib/` : jsPDF 2.5.1, jsPDF-AutoTable 3.8.2 et supabase-js 2.45.4 (licence MIT).
+
+## Version hors ligne (ordinateur sans internet)
+
+`python3 hors-ligne/construire.py` fabrique `dist/Facturation-Ets-Barry-hors-ligne.zip` :
+même application, mais les données restent dans le navigateur de l'ordinateur (lib/stockage-local.js
+remplace Supabase). On l'ouvre par double-clic sur index.html. Notice : hors-ligne/LISEZ-MOI.txt.

@@ -1,0 +1,32 @@
+FACTURATION ETS BARRY — VERSION SANS INTERNET
+=============================================
+
+INSTALLER (une seule fois)
+1. Copiez le dossier « Facturation-Ets-Barry » sur l'ordinateur,
+   par exemple dans « Documents ». Ne le laissez pas sur la clé USB.
+2. Ouvrez le dossier et double-cliquez sur « index.html ».
+   L'application s'ouvre dans le navigateur (Chrome ou Edge conseillés).
+3. Astuce : ajoutez la page aux favoris pour la retrouver facilement.
+
+UTILISER
+- Tout fonctionne sans internet : factures, clients, historique, PDF.
+- Les factures et les clients sont gardés dans le navigateur de cet ordinateur.
+
+IMPORTANT POUR NE RIEN PERDRE
+- Ouvrez toujours le même fichier index.html, au même endroit,
+  avec le même navigateur. Si vous déplacez le dossier ou changez
+  de navigateur, l'historique n'apparaîtra plus (il n'est pas effacé,
+  mais il faut revenir à l'ancien emplacement ou restaurer une sauvegarde).
+- N'effacez pas les « données de navigation » ou « cookies et données
+  des sites » du navigateur : cela effacerait les factures.
+- Faites une sauvegarde chaque semaine :
+  Historique > « Sauvegarder l'historique (fichier) ».
+  Copiez ce fichier .json sur une clé USB.
+
+RESTAURER UNE SAUVEGARDE
+- Historique > « Restaurer » puis choisissez le fichier .json.
+  Les factures déjà présentes ne sont pas ajoutées en double.
+- Cela permet aussi de passer les factures d'un ordinateur à un autre.
+
+Cette version est séparée du site en ligne : ce qui est fait ici
+n'apparaît pas sur ets-barry-facturation.vercel.app, et inversement.
