@@ -5,7 +5,7 @@ Usage : python3 hors-ligne/construire.py <dossier_sortie>"""
 import base64, os, shutil, sys, zipfile
 ICI = os.path.dirname(os.path.abspath(__file__)); RACINE = os.path.dirname(ICI)
 sortie = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(RACINE, 'dist'))
-dossier = os.path.join(sortie, 'Facturation-Ets-Barry')
+dossier = os.path.join(sortie, 'Ets-Barry-Facturation')
 shutil.rmtree(dossier, ignore_errors=True); os.makedirs(os.path.join(dossier, 'lib'))
 
 def remplacer(s, a, b):
@@ -76,14 +76,14 @@ html = html[:i] + '\n' + avert + html[i:]
 scripts = '<script src="lib/supabase.js"></script>\n<script src="lib/jspdf.umd.min.js"></script>\n<script src="lib/jspdf.plugin.autotable.min.js"></script>\n<script src="app.js"></script>'
 assert scripts in html
 html = html.replace(scripts, ''.join('<script>\n' + t + '\n</script>\n' for t in [lib('stockage-local.js'), lib('jspdf.umd.min.js'), lib('jspdf.plugin.autotable.min.js'), "window.LOGO_DATA = '" + logo + "';", ancien(app).replace('</script', '<\\/script')]))
-open(os.path.join(dossier, 'Facturation-Ets-Barry.html'), 'w', encoding='utf-8').write(html)
+open(os.path.join(dossier, 'Ets-Barry-Facturation-hors-ligne.html'), 'w', encoding='utf-8').write(html)
 for f in ['LICENSE-jspdf', 'LICENSE-jspdf-autotable']:
     shutil.copy(os.path.join(RACINE, 'lib', f), os.path.join(dossier, 'lib'))
 # Notice lisible par le Bloc-notes de Windows (BOM UTF-8 et fins de ligne Windows).
 notice = open(os.path.join(ICI, 'LISEZ-MOI.txt'), encoding='utf-8').read().replace('\r\n', '\n').replace('\n', '\r\n')
 open(os.path.join(dossier, 'LISEZ-MOI.txt'), 'w', encoding='utf-8-sig', newline='').write(notice)
 
-z = os.path.join(sortie, 'Facturation-Ets-Barry-hors-ligne.zip')
+z = os.path.join(sortie, 'Ets-Barry-Facturation-hors-ligne.zip')
 with zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED) as zf:
     for base, _, fichiers in os.walk(dossier):
         for f in fichiers:

@@ -25,6 +25,6 @@ Bibliothèques incluses dans `lib/` : jsPDF 2.5.1, jsPDF-AutoTable 3.8.2 et supa
 
 ## Version hors ligne (ordinateur sans internet)
 
-`python3 hors-ligne/construire.py` fabrique `dist/Facturation-Ets-Barry-hors-ligne.zip` :
+`python3 hors-ligne/construire.py` fabrique `dist/Ets-Barry-Facturation-hors-ligne.zip` :
 même application, mais les données restent dans le navigateur de l'ordinateur (lib/stockage-local.js
-remplace Supabase). On l'ouvre par double-clic sur index.html. Notice : hors-ligne/LISEZ-MOI.txt.
+remplace Supabase). On l'ouvre par double-clic sur Ets-Barry-Facturation-hors-ligne.html (un seul fichier). Notice : hors-ligne/LISEZ-MOI.txt.

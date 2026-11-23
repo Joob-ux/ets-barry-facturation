@@ -553,7 +553,8 @@ async function importer(liste, anciensClients) {
 $('importFile').addEventListener('change', async e => {
   const file = e.target.files[0]; if (!file) return;
   try {
-    const brut = JSON.parse(await file.text());
+    // FileReader plutôt que file.text() : l'ancien Edge ne connaît pas file.text().
+    const brut = JSON.parse(await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ko(r.error); r.readAsText(file, 'utf-8'); }));
     const data = Array.isArray(brut) ? brut : brut && brut.factures;
     if (!Array.isArray(data)) throw new Error('format');
     await importer(data, brut.clients || []);
