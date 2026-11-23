@@ -50,7 +50,9 @@ for f in ['jspdf.umd.min.js', 'jspdf.plugin.autotable.min.js', 'LICENSE-jspdf', 
 shutil.copy(os.path.join(RACINE, 'logo.jpg'), dossier)
 b64 = base64.b64encode(open(os.path.join(RACINE, 'logo.jpg'), 'rb').read()).decode()
 open(os.path.join(dossier, 'lib', 'logo.js'), 'w').write("window.LOGO_DATA = 'data:image/jpeg;base64," + b64 + "';\n")
-shutil.copy(os.path.join(ICI, 'LISEZ-MOI.txt'), dossier)
+# Notice lisible par le Bloc-notes de Windows (BOM UTF-8 et fins de ligne Windows).
+notice = open(os.path.join(ICI, 'LISEZ-MOI.txt'), encoding='utf-8').read().replace('\r\n', '\n').replace('\n', '\r\n')
+open(os.path.join(dossier, 'LISEZ-MOI.txt'), 'w', encoding='utf-8-sig', newline='').write(notice)
 
 z = os.path.join(sortie, 'Facturation-Ets-Barry-hors-ligne.zip')
 with zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED) as zf:
