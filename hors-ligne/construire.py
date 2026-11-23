@@ -25,7 +25,7 @@ app = remplacer(app, "    await importer(data, brut.clients || []);",
 """    const db = window.ETSBARRY_HORS_LIGNE.lire();
     let nc = 0, nf = 0;
     (brut.clients || []).forEach(c => { if (c && c.code && !db.etsbarry_clients.some(x => x.code === c.code)) { db.etsbarry_clients.push(c); nc++; } });
-    const cle = f => [f.date, f.nom, JSON.stringify(f.lignes), f.vir].join('|');
+    const cle = f => [nettoyerDate(f.date), f.nom, JSON.stringify(f.lignes), f.vir].join('|');
     const deja = new Set(db.etsbarry_factures.map(cle));
     let max = db.etsbarry_factures.reduce((m, f) => Math.max(m, Number(f.no) || 0), 0);
     data.forEach(f => {

@@ -1,0 +1,11 @@
+const {chromium}=require('playwright');const fs=require('fs');const D=process.env.S+'/full2/';
+(async()=>{const b=await chromium.launch();const ctx=await b.newContext({offline:true});
+await ctx.addInitScript(()=>{window.__saves=[];navigator.msSaveOrOpenBlob=(blob,nom)=>{const r=new FileReader();r.onload=()=>window.__saves.push({nom,data:r.result});r.readAsDataURL(blob);return true;};});
+const p=await ctx.newPage();await p.goto('file://'+D+'Ets-Barry-Facturation-hors-ligne.html');await p.waitForTimeout(300);
+await p.evaluate(()=>{localStorage.setItem('etsbarry-horsligne-v1',JSON.stringify({etsbarry_clients:[],etsbarry_factures:[{no:1,code:null,date:'‎23‎/‎11‎/‎2026',nom:'Ancienne',adresse:'',telephone:'',lignes:[{d:'CAFÉ EN GRAINES',q:3,v:1250}],vir:0,banque:'',compte:''}]}))});
+await p.reload();await p.waitForTimeout(300);await p.click('#tabHist');
+const t=await p.innerText('#hist tr');console.log('hist:',JSON.stringify(t.slice(0,40)));
+await p.click('#hist button:has-text("PDF")');await p.waitForTimeout(300);const s=await p.evaluate(()=>window.__saves);
+fs.writeFileSync(process.env.S+'/f22.pdf',Buffer.from(s[0].data.split(',')[1],'base64'));
+await p.click('#tabNew');console.log('date du jour:',JSON.stringify(await p.textContent('#pDate')));
+await b.close();})();

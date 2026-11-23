@@ -39,9 +39,13 @@ const sur = fn => function (e) {
   catch (err) { afficherErreur(err); }
 };
 // Espaces ordinaires : les polices du PDF n'affichent pas l'espace fine insécable.
-const nombre = n => new Intl.NumberFormat('fr-FR').format(Math.round(n || 0)).replace(/[  ]/g, ' ');
+// Écrit à la main (pas Intl) : l'ancien Edge ajoute des caractères invisibles qui font des espaces dans le PDF.
+const nombre = n => { const v = Math.round(n || 0); return (v < 0 ? '-' : '') + String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
 const fcfa = n => nombre(n) + ' FCFA';
-const aujourdhui = () => new Date().toLocaleDateString('fr-FR');
+const deux = x => (x < 10 ? '0' : '') + x;
+const aujourdhui = () => { const d = new Date(); return deux(d.getDate()) + '/' + deux(d.getMonth() + 1) + '/' + d.getFullYear(); };
+// Retire les caractères invisibles des dates déjà enregistrées par l'ancien Edge.
+const nettoyerDate = t => String(t || '').replace(/[^0-9\/.\-]/g, '');
 const numero = no => String(no).padStart(4, '0');
 const totalDe = lignes => lignes.reduce((s, l) => s + l.q * l.v, 0);
 
@@ -58,7 +62,7 @@ const SUPABASE_URL = 'https://yjxwwruceolwkwmmknul.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_FQTKc9ddrtuQ9j5o2x-Dhg_H-wAELPY';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const T_CLIENTS = 'etsbarry_clients', T_FACTURES = 'etsbarry_factures';
-const enNombres = f => ({ ...f, no: Number(f.no), vir: Number(f.vir) || 0, lignes: (f.lignes || []).map(l => ({ d: l.d, q: Number(l.q) || 0, v: Number(l.v) || 0 })) });
+const enNombres = f => ({ ...f, date: nettoyerDate(f.date), no: Number(f.no), vir: Number(f.vir) || 0, lignes: (f.lignes || []).map(l => ({ d: l.d, q: Number(l.q) || 0, v: Number(l.v) || 0 })) });
 
 async function charger() {
   const [c, f] = await Promise.all([
@@ -631,7 +635,7 @@ async function importer(liste, anciensClients) {
     let c = codes.get(cle) || clients.find(x => normal(x.nom) === cle);
     if (!c) { let k = nouveauCode(); while (trouverClient(k)) k = nouveauCode(); c = await creerClient(k, nom, adresse, telephone); }
     codes.set(cle, c);
-    const nf = { code: c.code, date: f.date || aujourdhui(), nom: c.nom, adresse: c.adresse, telephone: c.telephone || '',
+    const nf = { code: c.code, date: nettoyerDate(f.date) || aujourdhui(), nom: c.nom, adresse: c.adresse, telephone: c.telephone || '',
       lignes: f.lignes.map(l => ({ d: PRODUIT, q: +l.q || 0, v: +l.v || 0 })), vir: +f.vir || 0, banque: f.banque || '', compte: f.compte || '' };
     await enregistrerFacture(nf); factures.push(nf); n++;
   }
