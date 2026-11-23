@@ -1,24 +1,35 @@
 ETS BARRY FACTURATION — VERSION SANS INTERNET
 =============================================
 
-NAVIGATEUR : MICROSOFT EDGE
 Cette version est faite pour Microsoft Edge, déjà installé sur Windows 10.
 
 INSTALLER (une seule fois)
 1. Copiez le dossier « Ets-Barry-Facturation » sur l'ordinateur,
    par exemple dans « Documents ». Ne le laissez pas sur la clé USB.
    (Si vous avez reçu un zip : clic droit dessus, « Extraire tout ».)
-2. Ouvrez le dossier et double-cliquez sur « Ets-Barry-Facturation-hors-ligne.html ».
-   L'application s'ouvre dans Microsoft Edge.
-   Si elle s'ouvre dans un autre programme : clic droit sur le fichier,
-   « Ouvrir avec », puis « Microsoft Edge ».
-3. Astuce : ajoutez la page aux favoris pour la retrouver facilement.
+2. Astuce : clic droit sur « Ouvrir Facturation » > « Envoyer vers »
+   > « Bureau (créer un raccourci) ».
 
-UTILISER
-- Après « Enregistrer », un cadre vert apparaît.
+OUVRIR L'APPLICATION (chaque fois)
+- Double-cliquez sur « Ouvrir Facturation » (pas sur le fichier .html).
+  Edge s'ouvre sur la facturation après 2 secondes.
+- La première fois, Windows peut afficher « Windows a protégé votre
+  ordinateur » : cliquez sur « Informations complémentaires »,
+  puis « Exécuter quand même ».
+- Si un cadre rouge « Attention : les factures ne seront pas gardées »
+  apparaît, c'est que la page a été ouverte autrement : fermez-la et
+  passez par « Ouvrir Facturation ».
+
+OÙ SONT GARDÉES LES FACTURES
+- Dans le fichier « donnees-factures.json », dans le dossier de
+  l'application. Elles restent quand on ferme Edge ou l'ordinateur.
+- Une copie de chaque jour est rangée dans le dossier « sauvegardes ».
+- Ne supprimez pas ces fichiers. Pour garder une copie ailleurs,
+  copiez tout le dossier sur une clé USB de temps en temps.
 
 AVOIR LA FACTURE EN PDF (avec Edge)
-1. Cliquez sur « Imprimer / Enregistrer en PDF » (cadre vert ou Historique).
+1. Après « Enregistrer », cliquez sur « Imprimer / Enregistrer en PDF »
+   dans le cadre vert (ou sur « Imprimer » dans l'Historique).
 2. Dans la fenêtre d'impression d'Edge :
    - Imprimante : « Microsoft Print to PDF »
    - En-têtes et pieds de page : « Désactivé »
@@ -26,24 +37,10 @@ AVOIR LA FACTURE EN PDF (avec Edge)
    puis « Enregistrer ». Le PDF est prêt.
 - Pour imprimer sur papier, choisissez votre imprimante à l'étape 2.
 
-- Tout fonctionne sans internet : factures, clients, historique, PDF.
-- Les factures et les clients sont gardés dans le navigateur de cet ordinateur.
-
-IMPORTANT POUR NE RIEN PERDRE
-- Ouvrez toujours le même fichier Ets-Barry-Facturation-hors-ligne.html, au même endroit,
-  avec le même navigateur. Si vous déplacez le dossier ou changez
-  de navigateur, l'historique n'apparaîtra plus (il n'est pas effacé,
-  mais il faut revenir à l'ancien emplacement ou restaurer une sauvegarde).
-- N'effacez pas les « données de navigation » ou « cookies et données
-  des sites » du navigateur : cela effacerait les factures.
-- Faites une sauvegarde chaque semaine :
-  Historique > « Sauvegarder l'historique (fichier) ».
-  Copiez ce fichier .json sur une clé USB.
-
-RESTAURER UNE SAUVEGARDE
-- Historique > « Restaurer » puis choisissez le fichier .json.
-  Les factures déjà présentes ne sont pas ajoutées en double.
-- Cela permet aussi de passer les factures d'un ordinateur à un autre.
+SAUVEGARDE ET RESTAURATION
+- Historique > « Sauvegarder l'historique (fichier) » crée un fichier .json.
+- Historique > « Restaurer » remet les factures d'un fichier .json,
+  sans doublons. Cela sert aussi à passer d'un ordinateur à un autre.
 
 Cette version est séparée du site en ligne : ce qui est fait ici
 n'apparaît pas sur ets-barry-facturation.vercel.app, et inversement.

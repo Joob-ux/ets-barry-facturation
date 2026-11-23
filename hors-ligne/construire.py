@@ -38,10 +38,10 @@ app = remplacer(app, "    await importer(data, brut.clients || []);",
     $('importMsg').textContent = nf || nc ? nf + ' facture(s) et ' + nc + ' client(s) restauré(s).' : 'Rien à ajouter : tout ce fichier est déjà présent.';""")
 # Avertissement si le navigateur ne peut pas garder les données.
 app += """
-if (!window.ETSBARRY_HORS_LIGNE.stockageOk) {
+if (window.ETSBARRY_HORS_LIGNE.mode !== 'fichier') {
   const d = document.createElement('div');
   d.style.cssText = 'margin:16px 0;padding:14px 16px;border:2px solid #b91c1c;border-radius:8px;background:#fef2f2;color:#7f1d1d;line-height:1.5';
-  d.innerHTML = '<b>Attention : ce navigateur ne garde pas les factures.</b><br>Elles seront perdues en fermant la page. Avant de fermer, cliquez sur Historique puis « Sauvegarder l\\'historique (fichier) ».';
+  d.innerHTML = '<b>Attention : les factures ne seront pas gardées.</b><br>Fermez cette page et ouvrez l\\'application avec <b>« Ouvrir Facturation »</b> (double-clic), dans le même dossier.';
   document.querySelector('h1').insertAdjacentElement('afterend', d);
 }
 """
@@ -83,6 +83,10 @@ html = html[:i] + '<p style="text-align:center;color:#8a9690;font-size:12px;marg
 open(os.path.join(dossier, 'Ets-Barry-Facturation-hors-ligne.html'), 'w', encoding='utf-8').write(html)
 for f in ['LICENSE-jspdf', 'LICENSE-jspdf-autotable']:
     shutil.copy(os.path.join(RACINE, 'lib', f), os.path.join(dossier, 'lib'))
+# Lanceur Windows : serveur local (PowerShell, BOM UTF-8 et fins de ligne Windows) et fichier .bat.
+ps = open(os.path.join(ICI, 'serveur.ps1'), encoding='utf-8').read().replace('\r\n', '\n').replace('\n', '\r\n')
+open(os.path.join(dossier, 'serveur.ps1'), 'w', encoding='utf-8-sig', newline='').write(ps)
+shutil.copy(os.path.join(ICI, 'Ouvrir Facturation.bat'), dossier)
 # Notice lisible par le Bloc-notes de Windows (BOM UTF-8 et fins de ligne Windows).
 notice = open(os.path.join(ICI, 'LISEZ-MOI.txt'), encoding='utf-8').read().replace('\r\n', '\n').replace('\n', '\r\n')
 open(os.path.join(dossier, 'LISEZ-MOI.txt'), 'w', encoding='utf-8-sig', newline='').write(notice)
