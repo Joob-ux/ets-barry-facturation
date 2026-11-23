@@ -16,7 +16,7 @@ await p.click('#apres button:has-text("Imprimer")');await p.waitForTimeout(200);
 ok(await p.evaluate(()=>window.__print)===1,'fenêtre d\'impression lancée');
 ok(await p.evaluate(()=>document.body.classList.contains('impression')),'mode impression actif');
 await p.pdf({path:process.env.S+'/impression.pdf',format:'A4',printBackground:true});
-await p.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+await p.evaluate(()=>window.onafterprint());
 ok(!(await p.evaluate(()=>document.body.classList.contains('impression'))),'retour à la page normale après impression');
 await p.click('#tabHist');await p.click('#hist tr:has-text("0001") button:has-text("Imprimer")');await p.waitForTimeout(200);
 ok(await p.evaluate(()=>window.__print)===2,'bouton Imprimer de l\'historique');

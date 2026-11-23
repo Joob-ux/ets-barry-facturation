@@ -41,7 +41,7 @@ app += """
 if (!window.ETSBARRY_HORS_LIGNE.stockageOk) {
   const d = document.createElement('div');
   d.style.cssText = 'margin:16px 0;padding:14px 16px;border:2px solid #b91c1c;border-radius:8px;background:#fef2f2;color:#7f1d1d;line-height:1.5';
-  d.innerHTML = '<b>Attention : ce navigateur ne garde pas les factures.</b><br>Elles seront perdues en fermant la page. Installez Google Chrome (voir LISEZ-MOI.txt) et ouvrez ce fichier avec Chrome.';
+  d.innerHTML = '<b>Attention : ce navigateur ne garde pas les factures.</b><br>Elles seront perdues en fermant la page. Avant de fermer, cliquez sur Historique puis « Sauvegarder l\\'historique (fichier) ».';
   document.querySelector('h1').insertAdjacentElement('afterend', d);
 }
 """
@@ -51,8 +51,8 @@ app += "\ndocument.getElementById('demarrage').remove();\n"
 import subprocess
 ESBUILD = os.environ.get('ESBUILD', 'esbuild')
 def ancien(js):
-    # Syntaxe compatible avec l'ancien Edge de Windows 10 (EdgeHTML 17-18 : ES2017) et les vieux Chrome.
-    return subprocess.run([ESBUILD, '--target=es2017,edge18,chrome58,firefox57', '--loader=js', '--charset=utf8', '--log-level=error'],
+    # Syntaxe compatible avec l'ancien Edge de Windows 10 (EdgeHTML 17-18 : ES2017) .
+    return subprocess.run([ESBUILD, '--target=es2017,edge18', '--loader=js', '--charset=utf8', '--log-level=error'],
                           input=js, capture_output=True, text=True, check=True).stdout
 
 def lib(nom):
@@ -68,7 +68,7 @@ html = remplacer(html, 'Facturation Ets Barry</h1>', 'Facturation Ets Barry <sma
 avert = ('<div id="demarrage" style="margin:16px 0;padding:14px 16px;border:2px solid #b45309;border-radius:8px;background:#fff7ed;color:#7c2d12;line-height:1.5">'
          '<b>L\'application ne démarre pas.</b><br>'
          '1. Si vous avez ouvert le fichier depuis le zip : faites clic droit sur le zip, « Extraire tout », puis ouvrez le fichier extrait.<br>'
-         '2. Sinon, ouvrez ce fichier avec Google Chrome ou Microsoft Edge (clic droit sur le fichier, « Ouvrir avec »).<br>'
+         '2. Sinon, ouvrez ce fichier avec Microsoft Edge (clic droit sur le fichier, « Ouvrir avec », « Microsoft Edge »).<br>'
          '<span id="demarrageErreur" style="font-size:.85em;opacity:.8"></span></div>'
          '<script>window.onerror=function(m){var e=document.getElementById("demarrageErreur");if(e)e.textContent="Détail : "+m;};</script>')
 i = html.index('</h1>') + len('</h1>')

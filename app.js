@@ -256,7 +256,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&am
     '#impression .fac{text-align:right}#impression .fac b{font-size:22px}' +
     '#impression .cli{border:1px solid #d3dbd6;border-radius:4px;padding:8px 12px;width:55%;margin-bottom:14px}' +
     '#impression table{width:100%;border-collapse:collapse;margin-bottom:12px}' +
-    '#impression th{background:#0f6b4f;color:#fff;text-align:left;padding:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '#impression th{color:#0f6b4f;text-align:left;padding:6px;border-bottom:2px solid #0f6b4f;font-size:11px}' +
     '#impression td{border-bottom:1px solid #e3e8e5;padding:6px}#impression .n{text-align:right}' +
     '#impression .tot{width:50%;margin-left:auto}#impression .net td{color:#b45309;font-weight:bold}' +
     '#impression .sig{text-align:right;margin-top:40px}#impression .pied{margin-top:60px;border-top:1px solid #d3dbd6;padding-top:6px;text-align:center}';
@@ -287,8 +287,9 @@ function imprimerFacture(f) {
     '<div class="pied gris">' + esc(ENTREPRISE.nom + ' · ' + ENTREPRISE.adresse + ' · NINEA ' + ENTREPRISE.ninea + ' · RC ' + ENTREPRISE.rc) + '<br>Merci de votre confiance.</div>';
   document.body.classList.add('impression');
   const fin = () => document.body.classList.remove('impression');
-  window.addEventListener('afterprint', fin, { once: true });
-  setTimeout(() => { window.print(); setTimeout(fin, 1000); }, 50);
+  // La classe ne change que l'impression (pas l'écran) : on la retire après, sans minuterie qui couperait l'aperçu d'Edge.
+  window.onafterprint = fin;
+  setTimeout(() => { window.print(); }, 50);
 }
 // Après l'enregistrement : boutons bien visibles pour imprimer ou télécharger.
 function montrerApres(f) {
@@ -306,7 +307,7 @@ function montrerApres(f) {
   const b2 = document.createElement('button'); b2.type = 'button'; b2.className = 'ghost small'; b2.textContent = 'Télécharger le PDF'; b2.style.marginLeft = '8px';
   b2.addEventListener('click', sur(() => telechargerPDF(f)));
   const aide = document.createElement('div'); aide.style.cssText = 'font-size:.85rem;margin-top:8px';
-  aide.textContent = 'Dans la fenêtre d\'impression, choisissez l\'imprimante « Microsoft Print to PDF » pour obtenir un fichier PDF.';
+  aide.textContent = 'Dans la fenêtre d\'impression : imprimante « Microsoft Print to PDF », en-têtes et pieds de page « Désactivé », puis Imprimer.';
   p.appendChild(b1); p.appendChild(b2); p.appendChild(aide); p.hidden = false;
 }
 function telechargerPDF(f) {
