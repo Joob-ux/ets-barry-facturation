@@ -76,6 +76,10 @@ html = html[:i] + '\n' + avert + html[i:]
 scripts = '<script src="lib/supabase.js"></script>\n<script src="lib/jspdf.umd.min.js"></script>\n<script src="lib/jspdf.plugin.autotable.min.js"></script>\n<script src="app.js"></script>'
 assert scripts in html
 html = html.replace(scripts, ''.join('<script>\n' + t + '\n</script>\n' for t in [lib('stockage-local.js'), lib('jspdf.umd.min.js'), lib('jspdf.plugin.autotable.min.js'), "window.LOGO_DATA = '" + logo + "';", ancien(app).replace('</script', '<\\/script')]))
+import datetime
+version = datetime.datetime.now().strftime('%d/%m/%Y %H:%M')
+i = html.rindex('</body>')
+html = html[:i] + '<p style="text-align:center;color:#8a9690;font-size:12px;margin:24px 0">Version hors ligne du ' + version + '</p>\n' + html[i:]
 open(os.path.join(dossier, 'Ets-Barry-Facturation-hors-ligne.html'), 'w', encoding='utf-8').write(html)
 for f in ['LICENSE-jspdf', 'LICENSE-jspdf-autotable']:
     shutil.copy(os.path.join(RACINE, 'lib', f), os.path.join(dossier, 'lib'))

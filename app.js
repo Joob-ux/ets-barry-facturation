@@ -18,6 +18,26 @@ const CLE_CLIENTS = 'etsbarry-clients-v1';
 const PRODUIT = 'CAFÉ EN GRAINES';
 
 const $ = id => document.getElementById(id);
+// Toute erreur s'affiche en rouge en haut de la page (pour pouvoir la photographier).
+function afficherErreur(e) {
+  let box = $('erreurBox');
+  if (!box) {
+    box = document.createElement('div'); box.id = 'erreurBox';
+    box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:100;background:#b91c1c;color:#fff;padding:12px 16px;font-size:15px;line-height:1.4';
+    document.body.appendChild(box);
+  }
+  const t = (e && (e.message || e.description)) || String(e);
+  const pile = e && e.stack ? String(e.stack).split('\n').slice(0, 3).join(' | ') : '';
+  box.textContent = 'Erreur : ' + t + (pile ? ' — ' + pile : '') + '. Prenez une photo de ce message.';
+  box.hidden = false;
+}
+window.addEventListener('error', ev => afficherErreur(ev.error || ev.message));
+window.addEventListener('unhandledrejection', ev => afficherErreur(ev.reason));
+// Enveloppe un gestionnaire (même async) pour que ses erreurs soient affichées.
+const sur = fn => function (e) {
+  try { const r = fn.call(this, e); if (r && typeof r.catch === 'function') r.catch(afficherErreur); }
+  catch (err) { afficherErreur(err); }
+};
 // Espaces ordinaires : les polices du PDF n'affichent pas l'espace fine insécable.
 const nombre = n => new Intl.NumberFormat('fr-FR').format(Math.round(n || 0)).replace(/[  ]/g, ' ');
 const fcfa = n => nombre(n) + ' FCFA';
@@ -119,8 +139,8 @@ function ajouterLigne(q = '', v = '') {
   });
 }
 function lireLignes() {
-  return [...$('lines').children].map(l => {
-    const [d, q, v] = l.querySelectorAll('input');
+  return Array.prototype.slice.call($('lines').children).map(l => {
+    const ins = l.querySelectorAll('input'), q = ins[1], v = ins[2];
     return { d: PRODUIT, q: +q.value || 0, v: +v.value || 0 };
   }).filter(l => l.q || l.v);
 }
@@ -151,6 +171,7 @@ function apercu() {
 
 function viderFormulaire() {
   enEdition = null;
+  if ($('apres')) $('apres').hidden = true;
   $('formTitle').textContent = 'Nouvelle facture';
   $('saveBtn').textContent = 'Enregistrer et télécharger le PDF';
   ['code', 'nom', 'adresse', 'telephone', 'virement', 'banque', 'compte'].forEach(id => $(id).value = '');
@@ -216,6 +237,73 @@ function sauverPDF(doc, nom) {
   x.style.cssText = 'margin-left:12px;background:none;border:0;color:#fff;font-size:18px;cursor:pointer';
   x.onclick = () => { bar.hidden = true; };
   bar.appendChild(o); bar.appendChild(x); bar.hidden = false;
+}
+// ---------- Impression (marche partout, même sans téléchargement : « Microsoft Print to PDF ») ----------
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+(function () {
+  const st = document.createElement('style');
+  st.textContent = '#impression{display:none}' +
+    '@media print{@page{size:A4;margin:14mm}body.impression>*{display:none!important}body.impression>#impression{display:block!important}body.impression{background:#fff!important}}' +
+    '#impression{font-family:Arial,Helvetica,sans-serif;color:#17201c;font-size:12px}' +
+    '#impression .ent{display:flex;justify-content:space-between;border-bottom:2px solid #0f6b4f;padding-bottom:8px;margin-bottom:12px}' +
+    '#impression .ent img{width:64px;height:64px;object-fit:cover;margin-right:12px;vertical-align:top}' +
+    '#impression .nom{color:#0f6b4f;font-weight:bold;font-size:18px}' +
+    '#impression .gris{color:#5d6b64;font-size:11px}' +
+    '#impression .fac{text-align:right}#impression .fac b{font-size:22px}' +
+    '#impression .cli{border:1px solid #d3dbd6;border-radius:4px;padding:8px 12px;width:55%;margin-bottom:14px}' +
+    '#impression table{width:100%;border-collapse:collapse;margin-bottom:12px}' +
+    '#impression th{background:#0f6b4f;color:#fff;text-align:left;padding:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '#impression td{border-bottom:1px solid #e3e8e5;padding:6px}#impression .n{text-align:right}' +
+    '#impression .tot{width:50%;margin-left:auto}#impression .net td{color:#b45309;font-weight:bold}' +
+    '#impression .sig{text-align:right;margin-top:40px}#impression .pied{margin-top:60px;border-top:1px solid #d3dbd6;padding-top:6px;text-align:center}';
+  document.head.appendChild(st);
+})();
+function imprimerFacture(f) {
+  const total = totalDe(f.lignes), reste = Math.max(0, total - f.vir);
+  let div = $('impression');
+  if (!div) { div = document.createElement('div'); div.id = 'impression'; document.body.appendChild(div); }
+  const lignes = f.lignes.length ? f.lignes : [{ d: PRODUIT, q: 0, v: 0 }];
+  div.innerHTML =
+    '<div class="ent"><div>' + (logoData ? '<img src="' + logoData + '" alt="">' : '') +
+    '<div style="display:inline-block"><div class="nom">' + esc(ENTREPRISE.nom) + '</div><b>' + esc(ENTREPRISE.slogan) + '</b>' +
+    '<div class="gris">' + esc(ENTREPRISE.adresse) + '<br>NINEA : ' + esc(ENTREPRISE.ninea) + ' · RC : ' + esc(ENTREPRISE.rc) + '</div></div></div>' +
+    '<div class="fac"><b>FACTURE</b><br>N° ' + numero(f.no) + '<br>Date : ' + esc(f.date) + '</div></div>' +
+    '<div class="cli"><div class="gris">FACTURÉ À' + (f.code ? ' · CODE CLIENT : ' + esc(f.code) : '') + '</div><b>' + esc(f.nom || '—') + '</b>' +
+    '<div>Adresse (origine) : ' + esc(f.adresse || '—') + '</div>' + (f.telephone ? '<div>Téléphone : ' + esc(f.telephone) + '</div>' : '') + '</div>' +
+    '<table><thead><tr><th>Désignation</th><th class="n">Quantité</th><th class="n">Prix unitaire (FCFA)</th><th class="n">Montant (FCFA)</th></tr></thead><tbody>' +
+    lignes.map(l => '<tr><td>' + esc(l.d || PRODUIT) + '</td><td class="n">' + nombre(l.q) + '</td><td class="n">' + nombre(l.v) + '</td><td class="n">' + nombre(l.q * l.v) + '</td></tr>').join('') +
+    '</tbody></table>' +
+    '<table class="tot"><tr><td><b>Total</b></td><td class="n"><b>' + fcfa(total) + '</b></td></tr>' +
+    '<tr><td>Virement reçu</td><td class="n">' + fcfa(f.vir) + '</td></tr>' +
+    (f.banque ? '<tr><td>Banque</td><td class="n">' + esc(f.banque) + '</td></tr>' : '') +
+    (f.banque && f.compte ? '<tr><td>N° de compte</td><td class="n">' + esc(f.compte) + '</td></tr>' : '') +
+    '<tr class="net"><td>Net à payer</td><td class="n">' + fcfa(reste) + '</td></tr></table>' +
+    '<p><i>Arrêtée la présente facture à la somme de : ' + esc(enLettres(total)) + ' francs CFA.</i></p>' +
+    '<div class="sig"><b>LE GÉRANT</b><div class="gris">Signature et cachet</div></div>' +
+    '<div class="pied gris">' + esc(ENTREPRISE.nom + ' · ' + ENTREPRISE.adresse + ' · NINEA ' + ENTREPRISE.ninea + ' · RC ' + ENTREPRISE.rc) + '<br>Merci de votre confiance.</div>';
+  document.body.classList.add('impression');
+  const fin = () => document.body.classList.remove('impression');
+  window.addEventListener('afterprint', fin, { once: true });
+  setTimeout(() => { window.print(); setTimeout(fin, 1000); }, 50);
+}
+// Après l'enregistrement : boutons bien visibles pour imprimer ou télécharger.
+function montrerApres(f) {
+  let p = $('apres');
+  if (!p) {
+    p = document.createElement('div'); p.id = 'apres';
+    p.style.cssText = 'margin-top:12px;padding:12px 14px;border:2px solid #0f6b4f;border-radius:8px;background:#ecfdf5;color:#064e3b';
+    $('msg').parentNode.insertBefore(p, $('msg').nextSibling);
+  }
+  p.innerHTML = '';
+  const t = document.createElement('div'); t.style.cssText = 'font-weight:600;margin-bottom:8px';
+  t.textContent = 'Facture N° ' + numero(f.no) + ' enregistrée. Pour l\'avoir en PDF :'; p.appendChild(t);
+  const b1 = document.createElement('button'); b1.type = 'button'; b1.className = 'primary small'; b1.textContent = 'Imprimer / Enregistrer en PDF';
+  b1.addEventListener('click', sur(() => imprimerFacture(f)));
+  const b2 = document.createElement('button'); b2.type = 'button'; b2.className = 'ghost small'; b2.textContent = 'Télécharger le PDF'; b2.style.marginLeft = '8px';
+  b2.addEventListener('click', sur(() => telechargerPDF(f)));
+  const aide = document.createElement('div'); aide.style.cssText = 'font-size:.85rem;margin-top:8px';
+  aide.textContent = 'Dans la fenêtre d\'impression, choisissez l\'imprimante « Microsoft Print to PDF » pour obtenir un fichier PDF.';
+  p.appendChild(b1); p.appendChild(b2); p.appendChild(aide); p.hidden = false;
 }
 function telechargerPDF(f) {
   try { fairePDF(f); }
@@ -329,7 +417,8 @@ function afficherHistorique() {
     st.appendChild(p); tr.appendChild(st);
     const ac = document.createElement('td'); const box = document.createElement('div'); box.className = 'acts';
     const b = (txt, cls, fn) => { const x = document.createElement('button'); x.type = 'button'; x.className = cls + ' small'; x.textContent = txt; x.addEventListener('click', fn); box.appendChild(x); return x; };
-    b('PDF', 'ghost', () => telechargerPDF(f));
+    b('Imprimer', 'ghost', sur(() => imprimerFacture(f)));
+    b('PDF', 'ghost', sur(() => telechargerPDF(f)));
     b('Modifier', 'ghost admin-only', () => modifier(f.no));
     const sup = b('Supprimer', 'danger admin-only', () => {
       if (sup.dataset.ok) {
@@ -434,7 +523,7 @@ function ouvrirFormClient(c) {
 }
 $('addClientBtn').addEventListener('click', () => ouvrirFormClient(null));
 $('cCancel').addEventListener('click', () => { $('clientForm').hidden = true; });
-$('clientForm').addEventListener('submit', async e => {
+$('clientForm').addEventListener('submit', sur(async e => {
   e.preventDefault();
   const nom = $('cNom').value.trim(), adresse = $('cAdresse').value.trim(), telephone = $('cTelephone').value.trim();
   const m = $('cMsg'); m.classList.add('err');
@@ -451,7 +540,7 @@ $('clientForm').addEventListener('submit', async e => {
   remplirCodes();
   $('clientForm').hidden = true;
   $('codeSearch').value = c.code; afficherClients();
-});
+}));
 
 function modifier(no) {
   const f = factures.find(x => x.no === no); if (!f) return;
@@ -477,7 +566,7 @@ function montrer(vue) {
 }
 
 // ---------- Événements ----------
-$('f').addEventListener('submit', async e => {
+$('f').addEventListener('submit', sur(async e => {
   e.preventDefault();
   const lignes = lireLignes();
   // Aucun champ obligatoire. On refuse seulement des montants impossibles (ils fausseraient les calculs).
@@ -485,7 +574,7 @@ $('f').addEventListener('submit', async e => {
   const nom = $('nom').value.trim(), adresse = $('adresse').value.trim(), telephone = $('telephone').value.trim();
   const code = normaliserCode($('code').value);
   let client = code ? trouverClient(code) : null;
-  $('saveBtn').disabled = true; message('Enregistrement en ligne…');
+  $('saveBtn').disabled = true; message(window.ETSBARRY_HORS_LIGNE ? 'Enregistrement…' : 'Enregistrement en ligne…');
   let f;
   try {
     if (!client && code) client = await creerClient(code, nom, adresse, telephone);
@@ -501,8 +590,9 @@ $('f').addEventListener('submit', async e => {
   viderFormulaire();
   remplirCodes();
   message('Facture N° ' + numero(f.no) + ' enregistrée' + (f.code ? ' pour le client ' + f.code : '') + '.');
+  montrerApres(f);
   telechargerPDF(f);
-});
+}));
 ['nom', 'adresse', 'telephone', 'virement', 'banque'].forEach(id => $(id).addEventListener('input', apercu));
 $('code').addEventListener('input', verifierCode);
 $('tabClients').addEventListener('click', () => montrer('clients'));
@@ -550,7 +640,7 @@ async function importer(liste, anciensClients) {
   return n;
 }
 
-$('importFile').addEventListener('change', async e => {
+$('importFile').addEventListener('change', sur(async e => {
   const file = e.target.files[0]; if (!file) return;
   try {
     // FileReader plutôt que file.text() : l'ancien Edge ne connaît pas file.text().
@@ -560,7 +650,7 @@ $('importFile').addEventListener('change', async e => {
     await importer(data, brut.clients || []);
   } catch (err) { $('importMsg').textContent = err && err.message === 'format' || err instanceof SyntaxError ? "Ce fichier n'est pas une sauvegarde de l'historique." : erreurReseau(err); }
   e.target.value = '';
-});
+}));
 
 BANQUES.forEach(b => { const o = document.createElement('option'); o.value = o.textContent = b; $('banque').appendChild(o); });
 $('coName').textContent = ENTREPRISE.nom;

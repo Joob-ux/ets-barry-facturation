@@ -1,0 +1,28 @@
+const {chromium}=require('playwright');const D=process.env.S+'/full2/';
+const ok=(c,t)=>console.log((c?'OK   ':'ÉCHEC')+' '+t);
+(async()=>{const b=await chromium.launch();const ctx=await b.newContext({offline:true});
+await ctx.addInitScript(()=>{window.__print=0;window.print=()=>{window.__print++;};
+  window.__saves=[];navigator.msSaveOrOpenBlob=(blob,nom)=>{window.__saves.push(nom);return true;};});
+const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('file://'+D+'Ets-Barry-Facturation-hors-ligne.html');await p.waitForTimeout(400);
+ok((await p.innerText('body')).includes('Version hors ligne du'),'numéro de version visible');
+await p.fill('#code','IMP-1');await p.fill('#nom','Fatou Ndiaye');await p.fill('#adresse','Ziguinchor');await p.fill('#telephone','70 000 00 00');
+await p.fill('#lines input[type=number] >> nth=0','12');await p.fill('#lines input[type=number] >> nth=1','4500');await p.fill('#virement','20000');await p.selectOption('#banque','Bank of Africa');await p.fill('#compte','SN100 22');
+await p.click('#saveBtn');await p.waitForTimeout(300);
+ok(await p.isVisible('#apres'),'panneau après enregistrement visible : '+(await p.innerText('#apres')).split('\n')[0]);
+ok((await p.evaluate(()=>window.__saves)).length===1,'téléchargement PDF tenté aussi');
+await p.screenshot({path:process.env.S+'/apres.png'});
+await p.click('#apres button:has-text("Imprimer")');await p.waitForTimeout(200);
+ok(await p.evaluate(()=>window.__print)===1,'fenêtre d\'impression lancée');
+ok(await p.evaluate(()=>document.body.classList.contains('impression')),'mode impression actif');
+await p.pdf({path:process.env.S+'/impression.pdf',format:'A4',printBackground:true});
+await p.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+ok(!(await p.evaluate(()=>document.body.classList.contains('impression'))),'retour à la page normale après impression');
+await p.click('#tabHist');await p.click('#hist tr:has-text("0001") button:has-text("Imprimer")');await p.waitForTimeout(200);
+ok(await p.evaluate(()=>window.__print)===2,'bouton Imprimer de l\'historique');
+// Erreur visible
+await p.evaluate(()=>{setTimeout(()=>{throw new Error('essai erreur')},0)});await p.waitForTimeout(100);
+ok((await p.innerText('#erreurBox')).includes('essai erreur'),'erreur affichée en rouge');
+await p.evaluate(()=>{Promise.reject(new Error('essai promesse'))});await p.waitForTimeout(100);
+ok((await p.innerText('#erreurBox')).includes('essai promesse'),'erreur de promesse affichée');
+console.log('errs',errs.filter(e=>!e.includes('essai')));await b.close();})();
