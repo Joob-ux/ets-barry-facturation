@@ -4,8 +4,11 @@ FACTURATION ETS BARRY — VERSION SANS INTERNET
 INSTALLER (une seule fois)
 1. Copiez le dossier « Facturation-Ets-Barry » sur l'ordinateur,
    par exemple dans « Documents ». Ne le laissez pas sur la clé USB.
-2. Ouvrez le dossier et double-cliquez sur « index.html ».
+   (Si vous avez reçu un zip : clic droit dessus, « Extraire tout ».)
+2. Ouvrez le dossier et double-cliquez sur « Facturation-Ets-Barry.html ».
    L'application s'ouvre dans le navigateur (Chrome ou Edge conseillés).
+   Si seul le titre s'affiche, faites clic droit sur le fichier,
+   « Ouvrir avec », puis choisissez Google Chrome ou Microsoft Edge.
 3. Astuce : ajoutez la page aux favoris pour la retrouver facilement.
 
 UTILISER
@@ -13,7 +16,7 @@ UTILISER
 - Les factures et les clients sont gardés dans le navigateur de cet ordinateur.
 
 IMPORTANT POUR NE RIEN PERDRE
-- Ouvrez toujours le même fichier index.html, au même endroit,
+- Ouvrez toujours le même fichier Facturation-Ets-Barry.html, au même endroit,
   avec le même navigateur. Si vous déplacez le dossier ou changez
   de navigateur, l'historique n'apparaîtra plus (il n'est pas effacé,
   mais il faut revenir à l'ancien emplacement ou restaurer une sauvegarde).

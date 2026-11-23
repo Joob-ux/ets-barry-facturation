@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Fabrique la version hors ligne (dossier + zip) à partir de la version en ligne.
+Tout tient dans un seul fichier HTML : il marche même ouvert sans extraire le zip.
 Usage : python3 hors-ligne/construire.py <dossier_sortie>"""
 import base64, os, shutil, sys, zipfile
 ICI = os.path.dirname(os.path.abspath(__file__)); RACINE = os.path.dirname(ICI)
@@ -35,21 +36,33 @@ app = remplacer(app, "    await importer(data, brut.clients || []);",
     window.ETSBARRY_HORS_LIGNE.ecrire(db);
     await charger(); remplirCodes(); afficherHistorique();
     $('importMsg').textContent = nf || nc ? nf + ' facture(s) et ' + nc + ' client(s) restauré(s).' : 'Rien à ajouter : tout ce fichier est déjà présent.';""")
-open(os.path.join(dossier, 'app.js'), 'w', encoding='utf-8').write(app)
+# Si l'application ne démarre pas, ce message reste visible ; app.js le retire à la fin.
+app += "\ndocument.getElementById('demarrage').remove();\n"
 
+def lib(nom):
+    t = open(os.path.join(RACINE, 'lib', nom), encoding='utf-8').read() if nom != 'stockage-local.js' else open(os.path.join(ICI, nom), encoding='utf-8').read()
+    return t.replace('</script', '<\\/script')
+
+logo = 'data:image/jpeg;base64,' + base64.b64encode(open(os.path.join(RACINE, 'logo.jpg'), 'rb').read()).decode()
 html = open(os.path.join(RACINE, 'index.html'), encoding='utf-8').read()
-html = remplacer(html, '<script src="lib/supabase.js"></script>', '<script src="lib/stockage-local.js"></script>\n<script src="lib/logo.js"></script>')
 # Pas d'internet : pas de polices Google (le navigateur prend ses polices habituelles).
 html = '\n'.join(l for l in html.split('\n') if 'fonts.googleapis.com' not in l)
+html = html.replace('logo.jpg', logo)
 html = remplacer(html, 'Facturation Ets Barry</h1>', 'Facturation Ets Barry <small style="font-size:.6em;color:#6b7a72;font-weight:500">· hors ligne</small></h1>')
-open(os.path.join(dossier, 'index.html'), 'w', encoding='utf-8').write(html)
-
-shutil.copy(os.path.join(ICI, 'stockage-local.js'), os.path.join(dossier, 'lib'))
-for f in ['jspdf.umd.min.js', 'jspdf.plugin.autotable.min.js', 'LICENSE-jspdf', 'LICENSE-jspdf-autotable']:
+avert = ('<div id="demarrage" style="margin:16px 0;padding:14px 16px;border:2px solid #b45309;border-radius:8px;background:#fff7ed;color:#7c2d12;line-height:1.5">'
+         '<b>L\'application ne démarre pas.</b><br>'
+         '1. Si vous avez ouvert le fichier depuis le zip : faites clic droit sur le zip, « Extraire tout », puis ouvrez le fichier extrait.<br>'
+         '2. Sinon, ouvrez ce fichier avec Google Chrome ou Microsoft Edge (clic droit sur le fichier, « Ouvrir avec »).<br>'
+         '<span id="demarrageErreur" style="font-size:.85em;opacity:.8"></span></div>'
+         '<script>window.onerror=function(m){var e=document.getElementById("demarrageErreur");if(e)e.textContent="Détail : "+m;};</script>')
+i = html.index('</h1>') + len('</h1>')
+html = html[:i] + '\n' + avert + html[i:]
+scripts = '<script src="lib/supabase.js"></script>\n<script src="lib/jspdf.umd.min.js"></script>\n<script src="lib/jspdf.plugin.autotable.min.js"></script>\n<script src="app.js"></script>'
+assert scripts in html
+html = html.replace(scripts, ''.join('<script>\n' + t + '\n</script>\n' for t in [lib('stockage-local.js'), lib('jspdf.umd.min.js'), lib('jspdf.plugin.autotable.min.js'), "window.LOGO_DATA = '" + logo + "';", app.replace('</script', '<\\/script')]))
+open(os.path.join(dossier, 'Facturation-Ets-Barry.html'), 'w', encoding='utf-8').write(html)
+for f in ['LICENSE-jspdf', 'LICENSE-jspdf-autotable']:
     shutil.copy(os.path.join(RACINE, 'lib', f), os.path.join(dossier, 'lib'))
-shutil.copy(os.path.join(RACINE, 'logo.jpg'), dossier)
-b64 = base64.b64encode(open(os.path.join(RACINE, 'logo.jpg'), 'rb').read()).decode()
-open(os.path.join(dossier, 'lib', 'logo.js'), 'w').write("window.LOGO_DATA = 'data:image/jpeg;base64," + b64 + "';\n")
 # Notice lisible par le Bloc-notes de Windows (BOM UTF-8 et fins de ligne Windows).
 notice = open(os.path.join(ICI, 'LISEZ-MOI.txt'), encoding='utf-8').read().replace('\r\n', '\n').replace('\n', '\r\n')
 open(os.path.join(dossier, 'LISEZ-MOI.txt'), 'w', encoding='utf-8-sig', newline='').write(notice)
