@@ -281,7 +281,7 @@ function telechargerPDF(f) {
   doc.text(ENTREPRISE.nom + ' · ' + ENTREPRISE.adresse + ' · NINEA ' + ENTREPRISE.ninea + ' · RC ' + ENTREPRISE.rc, W / 2, 284, { align: 'center' });
   doc.text('Merci de votre confiance.', W / 2, 288, { align: 'center' });
 
-  doc.save('Facture-' + numero(f.no) + '-' + (f.nom || 'client').replace(/[^\p{L}\p{N}]+/gu, '-') + '.pdf');
+  doc.save('Facture-' + numero(f.no) + '-' + (f.nom || 'client').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-') + '.pdf');
 }
 
 // ---------- Historique ----------
@@ -442,10 +442,10 @@ function montrer(vue) {
   $('viewNew').hidden = vue !== 'new';
   $('viewHist').hidden = vue !== 'hist';
   $('viewClients').hidden = vue !== 'clients';
-  $('tabClients').toggleAttribute('aria-current', vue === 'clients'); if (vue === 'clients') $('tabClients').setAttribute('aria-current', 'page');
+  if (vue === 'clients') $('tabClients').setAttribute('aria-current', 'page'); else $('tabClients').removeAttribute('aria-current');
   if (vue === 'clients') afficherClients();
-  $('tabNew').toggleAttribute('aria-current', vue === 'new'); if (vue === 'new') $('tabNew').setAttribute('aria-current', 'page');
-  $('tabHist').toggleAttribute('aria-current', vue === 'hist'); if (vue === 'hist') $('tabHist').setAttribute('aria-current', 'page');
+  if (vue === 'new') $('tabNew').setAttribute('aria-current', 'page'); else $('tabNew').removeAttribute('aria-current');
+  if (vue === 'hist') $('tabHist').setAttribute('aria-current', 'page'); else $('tabHist').removeAttribute('aria-current');
   if (vue === 'hist') afficherHistorique();
 }
 
@@ -495,8 +495,10 @@ $('search').addEventListener('input', afficherHistorique);
 
 $('exportBtn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify({ factures, clients }, null, 2)], { type: 'application/json' });
+  const nomFichier = 'historique-ets-barry-' + new Date().toISOString().slice(0, 10) + '.json';
+  if (navigator.msSaveOrOpenBlob) return navigator.msSaveOrOpenBlob(blob, nomFichier); // ancien Edge
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = 'historique-ets-barry-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+  a.download = nomFichier; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
 // Envoie en ligne des factures venant d'une sauvegarde ou de l'ancien stockage du navigateur.

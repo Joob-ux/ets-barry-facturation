@@ -1,6 +1,16 @@
 FACTURATION ETS BARRY — VERSION SANS INTERNET
 =============================================
 
+NAVIGATEUR CONSEILLÉ : GOOGLE CHROME
+- Sur un vieux Windows 10 (par exemple version 1803), l'ancien Edge
+  installé d'origine peut refuser de garder les factures. Dans ce cas,
+  un cadre rouge « Attention » s'affiche en haut de la page.
+- Solution : installer Google Chrome sans internet.
+  Sur un ordinateur connecté, téléchargez l'installateur complet :
+  https://www.google.com/chrome/?standalone=1
+  Copiez le fichier sur la clé USB, puis lancez-le sur l'ordinateur
+  sans internet.
+
 INSTALLER (une seule fois)
 1. Copiez le dossier « Facturation-Ets-Barry » sur l'ordinateur,
    par exemple dans « Documents ». Ne le laissez pas sur la clé USB.

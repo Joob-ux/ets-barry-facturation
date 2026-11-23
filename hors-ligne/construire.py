@@ -36,11 +36,27 @@ app = remplacer(app, "    await importer(data, brut.clients || []);",
     window.ETSBARRY_HORS_LIGNE.ecrire(db);
     await charger(); remplirCodes(); afficherHistorique();
     $('importMsg').textContent = nf || nc ? nf + ' facture(s) et ' + nc + ' client(s) restauré(s).' : 'Rien à ajouter : tout ce fichier est déjà présent.';""")
+# Avertissement si le navigateur ne peut pas garder les données.
+app += """
+if (!window.ETSBARRY_HORS_LIGNE.stockageOk) {
+  const d = document.createElement('div');
+  d.style.cssText = 'margin:16px 0;padding:14px 16px;border:2px solid #b91c1c;border-radius:8px;background:#fef2f2;color:#7f1d1d;line-height:1.5';
+  d.innerHTML = '<b>Attention : ce navigateur ne garde pas les factures.</b><br>Elles seront perdues en fermant la page. Installez Google Chrome (voir LISEZ-MOI.txt) et ouvrez ce fichier avec Chrome.';
+  document.querySelector('h1').insertAdjacentElement('afterend', d);
+}
+"""
 # Si l'application ne démarre pas, ce message reste visible ; app.js le retire à la fin.
 app += "\ndocument.getElementById('demarrage').remove();\n"
 
+import subprocess
+ESBUILD = os.environ.get('ESBUILD', 'esbuild')
+def ancien(js):
+    # Syntaxe compatible avec l'ancien Edge de Windows 10 (EdgeHTML 17-18 : ES2017) et les vieux Chrome.
+    return subprocess.run([ESBUILD, '--target=es2017,edge18,chrome58,firefox57', '--loader=js', '--charset=utf8', '--log-level=error'],
+                          input=js, capture_output=True, text=True, check=True).stdout
+
 def lib(nom):
-    t = open(os.path.join(RACINE, 'lib', nom), encoding='utf-8').read() if nom != 'stockage-local.js' else open(os.path.join(ICI, nom), encoding='utf-8').read()
+    t = open(os.path.join(RACINE, 'lib', nom), encoding='utf-8').read() if nom != 'stockage-local.js' else ancien(open(os.path.join(ICI, nom), encoding='utf-8').read())
     return t.replace('</script', '<\\/script')
 
 logo = 'data:image/jpeg;base64,' + base64.b64encode(open(os.path.join(RACINE, 'logo.jpg'), 'rb').read()).decode()
@@ -59,7 +75,7 @@ i = html.index('</h1>') + len('</h1>')
 html = html[:i] + '\n' + avert + html[i:]
 scripts = '<script src="lib/supabase.js"></script>\n<script src="lib/jspdf.umd.min.js"></script>\n<script src="lib/jspdf.plugin.autotable.min.js"></script>\n<script src="app.js"></script>'
 assert scripts in html
-html = html.replace(scripts, ''.join('<script>\n' + t + '\n</script>\n' for t in [lib('stockage-local.js'), lib('jspdf.umd.min.js'), lib('jspdf.plugin.autotable.min.js'), "window.LOGO_DATA = '" + logo + "';", app.replace('</script', '<\\/script')]))
+html = html.replace(scripts, ''.join('<script>\n' + t + '\n</script>\n' for t in [lib('stockage-local.js'), lib('jspdf.umd.min.js'), lib('jspdf.plugin.autotable.min.js'), "window.LOGO_DATA = '" + logo + "';", ancien(app).replace('</script', '<\\/script')]))
 open(os.path.join(dossier, 'Facturation-Ets-Barry.html'), 'w', encoding='utf-8').write(html)
 for f in ['LICENSE-jspdf', 'LICENSE-jspdf-autotable']:
     shutil.copy(os.path.join(RACINE, 'lib', f), os.path.join(dossier, 'lib'))

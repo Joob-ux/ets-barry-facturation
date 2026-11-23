@@ -2,12 +2,17 @@
 // Mêmes appels que supabase-js pour que app.js reste identique à la version en ligne.
 (function () {
   var CLE = 'etsbarry-horsligne-v1';
+  var copie = function (x) { return JSON.parse(JSON.stringify(x)); };
+  // Certains navigateurs (ancien Edge) refusent le stockage pour un fichier ouvert depuis l'ordinateur.
+  // Dans ce cas, on garde les données en mémoire et la page affiche un avertissement.
+  var memoire = null, stockageOk = false;
+  try { localStorage.setItem(CLE + '-test', '1'); localStorage.removeItem(CLE + '-test'); stockageOk = true; } catch (e) {}
   function lire() {
+    if (!stockageOk) return memoire ? copie(memoire) : { etsbarry_clients: [], etsbarry_factures: [] };
     try { var d = JSON.parse(localStorage.getItem(CLE) || 'null'); if (d && d.etsbarry_clients && d.etsbarry_factures) return d; } catch (e) {}
     return { etsbarry_clients: [], etsbarry_factures: [] };
   }
-  function ecrire(db) { localStorage.setItem(CLE, JSON.stringify(db)); }
-  var copie = function (x) { return JSON.parse(JSON.stringify(x)); };
+  function ecrire(db) { if (!stockageOk) { memoire = copie(db); return; } localStorage.setItem(CLE, JSON.stringify(db)); }
   function table(nom) {
     var st = { op: 'select', rows: null, filtre: null, single: false, ordre: null };
     function run() {
@@ -50,7 +55,7 @@
     };
     return b;
   }
-  window.ETSBARRY_HORS_LIGNE = { lire: lire, ecrire: ecrire };
+  window.ETSBARRY_HORS_LIGNE = { lire: lire, ecrire: ecrire, stockageOk: stockageOk };
   window.supabase = { createClient: function () { return {
     auth: { getSession: async function () { return { data: { session: null } }; }, signOut: async function () {}, signInWithPassword: async function () { return { error: { message: 'hors ligne' } }; } },
     rpc: async function (n, a) {
