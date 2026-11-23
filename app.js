@@ -194,8 +194,35 @@ function enLettres(n) {
 }
 
 // ---------- PDF A4 ----------
+// Enregistre le PDF de façon compatible avec les anciens navigateurs (ancien Edge : msSaveOrOpenBlob),
+// et affiche en bas de la page un bouton pour ouvrir le PDF si le téléchargement passe inaperçu.
+function sauverPDF(doc, nom) {
+  const blob = doc.output('blob');
+  if (navigator.msSaveOrOpenBlob) { navigator.msSaveOrOpenBlob(blob, nom); return; }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = nom;
+  document.body.appendChild(a); a.click(); a.remove();
+  let bar = $('pdfBar');
+  if (!bar) {
+    bar = document.createElement('div'); bar.id = 'pdfBar';
+    bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:50;background:#17201c;color:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.25);font-size:14px;max-width:calc(100% - 32px)';
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = '';
+  bar.appendChild(document.createTextNode('PDF enregistré dans Téléchargements. '));
+  const o = document.createElement('a'); o.href = url; o.target = '_blank'; o.textContent = 'Ouvrir le PDF';
+  o.style.cssText = 'color:#86efac;font-weight:600;margin-left:6px';
+  const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Fermer');
+  x.style.cssText = 'margin-left:12px;background:none;border:0;color:#fff;font-size:18px;cursor:pointer';
+  x.onclick = () => { bar.hidden = true; };
+  bar.appendChild(o); bar.appendChild(x); bar.hidden = false;
+}
 function telechargerPDF(f) {
-  if (!window.jspdf) { alert("Le module PDF n'a pas pu se charger. Vérifiez la connexion internet."); return; }
+  try { fairePDF(f); }
+  catch (e) { const t = 'Le PDF n\'a pas pu être créé (' + (e && e.message || e) + '). La facture est bien enregistrée.'; message(t, true); $('importMsg').textContent = t; }
+}
+function fairePDF(f) {
+  if (!window.jspdf) throw new Error('module PDF non chargé');
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const vert = [15, 107, 79], gris = [93, 107, 100];
@@ -281,7 +308,7 @@ function telechargerPDF(f) {
   doc.text(ENTREPRISE.nom + ' · ' + ENTREPRISE.adresse + ' · NINEA ' + ENTREPRISE.ninea + ' · RC ' + ENTREPRISE.rc, W / 2, 284, { align: 'center' });
   doc.text('Merci de votre confiance.', W / 2, 288, { align: 'center' });
 
-  doc.save('Facture-' + numero(f.no) + '-' + (f.nom || 'client').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-') + '.pdf');
+  sauverPDF(doc, 'Facture-' + numero(f.no) + '-' + (f.nom || 'client').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-') + '.pdf');
 }
 
 // ---------- Historique ----------
@@ -471,10 +498,10 @@ $('f').addEventListener('submit', async e => {
   $('saveBtn').disabled = false;
   const i = factures.findIndex(x => x.no === f.no);
   if (i >= 0) factures[i] = f; else factures.push(f);
-  telechargerPDF(f);
   viderFormulaire();
   remplirCodes();
   message('Facture N° ' + numero(f.no) + ' enregistrée' + (f.code ? ' pour le client ' + f.code : '') + '.');
+  telechargerPDF(f);
 });
 ['nom', 'adresse', 'telephone', 'virement', 'banque'].forEach(id => $(id).addEventListener('input', apercu));
 $('code').addEventListener('input', verifierCode);
