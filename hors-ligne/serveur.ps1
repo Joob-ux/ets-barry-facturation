@@ -8,11 +8,17 @@ $donnees = Join-Path $dossier 'donnees-factures.json'
 $sauvegardes = Join-Path $dossier 'sauvegardes'
 $port = 8765
 $utf8 = New-Object System.Text.UTF8Encoding($false)
+$journal = Join-Path $dossier 'serveur-journal.txt'
+function Journal($texte) {
+  try { Add-Content -LiteralPath $journal -Value ((Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '  ' + $texte) } catch { }
+}
 
 try {
   $ecoute = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $port)
   $ecoute.Start()
+  Journal 'Serveur demarre sur http://localhost:8765/'
 } catch {
+  Journal ('Port 8765 deja utilise (serveur deja lance ?) : ' + $_)
   exit 0  # deja lance : le serveur existant suffit
 }
 
@@ -84,6 +90,7 @@ while ($true) {
     }
   }
   catch {
+    if (-not ($_.Exception -is [System.IO.IOException])) { Journal ('Erreur : ' + $_) }
     try { Envoyer $flux '500 Internal Server Error' 'text/plain; charset=utf-8' ($utf8.GetBytes([string]$_)) } catch { }
   }
   finally {

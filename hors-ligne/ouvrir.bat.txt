@@ -1,0 +1,29 @@
+@echo off
+rem Ouvre la facturation Ets Barry dans Edge. Les factures sont gardees dans donnees-factures.json.
+cd /d "%~dp0"
+
+rem 1. Demarrage automatique avec Windows : le petit serveur se lance tout seul a chaque allumage.
+set "DEMARRAGE=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Ets Barry facturation.bat"
+> "%DEMARRAGE%" echo @echo off
+>> "%DEMARRAGE%" echo start "" powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0serveur.ps1"
+
+rem 2. Lancer le serveur (s'il tourne deja, il ne se passe rien).
+start "" powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0serveur.ps1"
+
+rem 3. Attendre qu'il reponde (jusqu'a 20 secondes) avant d'ouvrir Edge.
+echo Demarrage de la facturation Ets Barry, patientez...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "for($i=0;$i -lt 40;$i++){ try { $c=New-Object Net.Sockets.TcpClient('127.0.0.1',8765); $c.Close(); exit 0 } catch { Start-Sleep -Milliseconds 500 } }; exit 1"
+if errorlevel 1 goto erreur
+
+start "" "microsoft-edge:http://localhost:8765/"
+exit /b 0
+
+:erreur
+echo.
+echo ERREUR : le programme de facturation n'a pas pu demarrer.
+echo Prenez une photo de cette fenetre et envoyez-la.
+echo.
+if exist "%~dp0serveur-journal.txt" type "%~dp0serveur-journal.txt"
+powershell -NoProfile -Command "$e=$null; [void][System.Management.Automation.Language.Parser]::ParseFile('%~dp0serveur.ps1',[ref]$null,[ref]$e); foreach($x in $e){ $x.ToString() }"
+echo.
+pause

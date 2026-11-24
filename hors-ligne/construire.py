@@ -86,7 +86,8 @@ for f in ['LICENSE-jspdf', 'LICENSE-jspdf-autotable']:
 # Lanceur Windows : serveur local (PowerShell, BOM UTF-8 et fins de ligne Windows) et fichier .bat.
 ps = open(os.path.join(ICI, 'serveur.ps1'), encoding='utf-8').read().replace('\r\n', '\n').replace('\n', '\r\n')
 open(os.path.join(dossier, 'serveur.ps1'), 'w', encoding='utf-8-sig', newline='').write(ps)
-shutil.copy(os.path.join(ICI, 'Ouvrir Facturation.bat'), dossier)
+bat = open(os.path.join(ICI, 'ouvrir.bat.txt'), encoding='ascii').read().replace('\r\n', '\n').replace('\n', '\r\n')
+open(os.path.join(dossier, 'Ouvrir Facturation.bat'), 'w', encoding='ascii', newline='').write(bat)
 # Notice lisible par le Bloc-notes de Windows (BOM UTF-8 et fins de ligne Windows).
 notice = open(os.path.join(ICI, 'LISEZ-MOI.txt'), encoding='utf-8').read().replace('\r\n', '\n').replace('\n', '\r\n')
 open(os.path.join(dossier, 'LISEZ-MOI.txt'), 'w', encoding='utf-8-sig', newline='').write(notice)
